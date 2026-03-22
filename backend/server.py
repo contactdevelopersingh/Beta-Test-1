@@ -205,6 +205,40 @@ class AlertCreate(BaseModel):
     target_price: float
     note: Optional[str] = None
 
+# ==================== MARKET HOURS ====================
+
+def is_indian_market_open():
+    """Indian market (NSE): Mon-Fri 9:15 AM - 3:30 PM IST (UTC+5:30)"""
+    ist_offset = timedelta(hours=5, minutes=30)
+    now_ist = datetime.now(timezone.utc) + ist_offset
+    if now_ist.weekday() >= 5:  # Saturday=5, Sunday=6
+        return False
+    market_open = now_ist.replace(hour=9, minute=15, second=0, microsecond=0)
+    market_close = now_ist.replace(hour=15, minute=30, second=0, microsecond=0)
+    return market_open <= now_ist <= market_close
+
+def is_forex_market_open():
+    """Forex: Opens Sunday ~5 PM ET, Closes Friday ~5 PM ET"""
+    et_offset = timedelta(hours=-4)  # EDT (summer), adjust to -5 for EST
+    now_et = datetime.now(timezone.utc) + et_offset
+    weekday = now_et.weekday()  # Mon=0, Sun=6
+    hour = now_et.hour
+    # Closed: Friday after 5PM through Sunday before 5PM
+    if weekday == 4 and hour >= 17:  # Friday after 5PM
+        return False
+    if weekday == 5:  # Saturday
+        return False
+    if weekday == 6 and hour < 17:  # Sunday before 5PM
+        return False
+    return True
+
+def get_market_status():
+    return {
+        "crypto": {"open": True, "label": "24/7"},
+        "forex": {"open": is_forex_market_open(), "label": "Open" if is_forex_market_open() else "Closed"},
+        "indian": {"open": is_indian_market_open(), "label": "Open" if is_indian_market_open() else "Closed"},
+    }
+
 # ==================== HELPERS ====================
 
 async def cached_get(url: str, ttl: int = 60) -> dict:
@@ -507,25 +541,32 @@ _live = {
 }
 
 async def _load_crypto():
-    try:
-        url = f"{COINGECKO_BASE}/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=25&page=1&sparkline=false&price_change_percentage=24h"
-        data = await cached_get(url, ttl=60)
-        prices = []
-        for c in data:
-            p = float(c.get('current_price', 0) or 0)
-            if p > 0:
-                prices.append({
-                    'id': c['id'], 'symbol': (c.get('symbol', '') or '').upper(),
-                    'name': c.get('name', ''), 'price': p, 'base_price': p,
-                    'change_24h': float(c.get('price_change_percentage_24h', 0) or 0),
-                    'market_cap': c.get('market_cap', 0), 'volume': c.get('total_volume', 0),
-                    'image': c.get('image', ''), 'market': 'crypto',
-                })
-        _live['crypto'] = prices
-        _live['last_crypto_fetch'] = time.time()
-        logger.info(f"Loaded {len(prices)} crypto prices")
-    except Exception as e:
-        logger.error(f"Crypto load failed: {e}")
+    for attempt in range(3):
+        try:
+            url = f"{COINGECKO_BASE}/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=25&page=1&sparkline=false&price_change_percentage=24h"
+            data = await cached_get(url, ttl=150)
+            prices = []
+            for c in data:
+                p = float(c.get('current_price', 0) or 0)
+                if p > 0:
+                    prices.append({
+                        'id': c['id'], 'symbol': (c.get('symbol', '') or '').upper(),
+                        'name': c.get('name', ''), 'price': p, 'base_price': p,
+                        'change_24h': float(c.get('price_change_percentage_24h', 0) or 0),
+                        'market_cap': c.get('market_cap', 0), 'volume': c.get('total_volume', 0),
+                        'image': c.get('image', ''), 'market': 'crypto',
+                    })
+            if prices:
+                _live['crypto'] = prices
+                _live['last_crypto_fetch'] = time.time()
+                logger.info(f"Loaded {len(prices)} crypto prices")
+                return
+        except Exception as e:
+            logger.error(f"Crypto load failed: {e}")
+            if attempt < 2:
+                await asyncio.sleep(5 * (attempt + 1))
+    # All retries failed - set fetch time to prevent constant retrying
+    _live['last_crypto_fetch'] = time.time()
 
 async def _load_forex():
     try:
@@ -572,19 +613,24 @@ async def _load_indian():
         logger.error(f"Indian load failed: {e}")
 
 def _tick():
-    """Apply realistic micro-movements to all prices"""
+    """Apply realistic micro-movements only to OPEN markets"""
+    # Crypto is 24/7 — always tick
     for item in _live['crypto']:
         change = random.gauss(0, 0.0005)
         item['price'] = round(item['price'] * (1 + change), 2 if item['price'] >= 1 else 6)
 
-    for item in _live['forex']:
-        change = random.gauss(0, 0.00008)
-        dec = 4 if item['price'] < 50 else 2
-        item['price'] = round(item['price'] * (1 + change), dec)
+    # Only tick forex if market is open
+    if is_forex_market_open():
+        for item in _live['forex']:
+            change = random.gauss(0, 0.00008)
+            dec = 4 if item['price'] < 50 else 2
+            item['price'] = round(item['price'] * (1 + change), dec)
 
-    for item in _live['indian']:
-        change = random.gauss(0, 0.0002)
-        item['price'] = round(item['price'] * (1 + change), 2)
+    # Only tick Indian market if market is open
+    if is_indian_market_open():
+        for item in _live['indian']:
+            change = random.gauss(0, 0.0002)
+            item['price'] = round(item['price'] * (1 + change), 2)
 
     # Top gainers / losers
     all_items = []
@@ -608,11 +654,12 @@ async def price_ticker_loop():
     while True:
         try:
             now = time.time()
-            if now - _live['last_crypto_fetch'] > 90:
+            if now - _live['last_crypto_fetch'] > 180:
                 asyncio.create_task(_load_crypto())
-            if now - _live['last_forex_fetch'] > 300:
+            # Only refetch forex/indian if market is open or we have no data
+            if (now - _live['last_forex_fetch'] > 300) and (is_forex_market_open() or not _live['forex']):
                 asyncio.create_task(_load_forex())
-            if now - _live['last_indian_fetch'] > 300:
+            if (now - _live['last_indian_fetch'] > 300) and (is_indian_market_open() or not _live['indian']):
                 asyncio.create_task(_load_indian())
             _tick()
             _alert_counter += 1
@@ -627,12 +674,13 @@ async def price_ticker_loop():
 async def get_live_prices():
     """Real-time prices endpoint - polled every 1-2 seconds by frontend"""
     if not _live['initialized']:
-        return {"crypto": [], "forex": [], "indian": [], "gainers": [], "losers": [], "tick": 0, "initialized": False}
+        return {"crypto": [], "forex": [], "indian": [], "gainers": [], "losers": [], "tick": 0, "initialized": False, "market_status": get_market_status()}
     return {
         "crypto": _live['crypto'], "forex": _live['forex'], "indian": _live['indian'],
         "gainers": _live['gainers'], "losers": _live['losers'],
         "tick": _live['tick'], "initialized": True,
         "timestamp": datetime.now(timezone.utc).isoformat(),
+        "market_status": get_market_status(),
     }
 
 # ==================== AI SIGNALS ====================

@@ -7,7 +7,7 @@ import { Input } from '../components/ui/input';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { AreaChart, Area, ResponsiveContainer } from 'recharts';
-import { Search, TrendingUp, TrendingDown, Star, RefreshCw, Wifi } from 'lucide-react';
+import { Search, TrendingUp, TrendingDown, Star, RefreshCw, Wifi, WifiOff, Clock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
@@ -40,7 +40,7 @@ const MiniChart = ({ data, positive }) => {
 export default function MarketsPage() {
   const { api } = useAuth();
   const navigate = useNavigate();
-  const { crypto, forex, indian, connected, tick, priceChanges } = useMarketStream(true, 1500);
+  const { crypto, forex, indian, connected, tick, priceChanges, market_status } = useMarketStream(true, 1500);
   const [tab, setTab] = useState('crypto');
   const [search, setSearch] = useState('');
   const [sparklines, setSparklines] = useState({});
@@ -77,6 +77,20 @@ export default function MarketsPage() {
           <p className="text-sm text-white/40 mt-1">Real-time prices across all markets</p>
         </div>
         <div className="flex items-center gap-2">
+          {market_status && (
+            <div className="flex items-center gap-3 mr-2">
+              {[
+                { key: 'crypto', label: 'Crypto' },
+                { key: 'forex', label: 'Forex' },
+                { key: 'indian', label: 'Indian' },
+              ].map(m => (
+                <div key={m.key} className="flex items-center gap-1">
+                  <div className={`w-1.5 h-1.5 rounded-full ${market_status[m.key]?.open ? 'bg-[#00FF94]' : 'bg-[#EAB308]'}`} />
+                  <span className={`text-[10px] font-data ${market_status[m.key]?.open ? 'text-white/50' : 'text-[#EAB308]/70'}`}>{m.label}</span>
+                </div>
+              ))}
+            </div>
+          )}
           <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/5 border border-white/10" data-testid="market-live-indicator">
             <div className={`live-dot ${connected ? '' : 'bg-red-500'}`} />
             <span className="text-[10px] font-data text-white/50">{connected ? 'LIVE' : 'CONNECTING...'}</span>
@@ -95,10 +109,12 @@ export default function MarketsPage() {
             <Wifi className="w-3 h-3 mr-1 text-[#00FF94]" /> Crypto ({crypto.length})
           </TabsTrigger>
           <TabsTrigger value="forex" className="text-xs data-[state=active]:bg-[#6366F1] data-[state=active]:text-white" data-testid="forex-tab">
-            <Wifi className="w-3 h-3 mr-1 text-[#00FF94]" /> Forex ({forex.length})
+            {market_status?.forex?.open ? <Wifi className="w-3 h-3 mr-1 text-[#00FF94]" /> : <Clock className="w-3 h-3 mr-1 text-[#EAB308]" />}
+            Forex ({forex.length}) {!market_status?.forex?.open && <span className="ml-1 text-[9px] text-[#EAB308]">CLOSED</span>}
           </TabsTrigger>
           <TabsTrigger value="indian" className="text-xs data-[state=active]:bg-[#6366F1] data-[state=active]:text-white" data-testid="indian-tab">
-            <Wifi className="w-3 h-3 mr-1 text-[#00FF94]" /> Indian ({indian.length})
+            {market_status?.indian?.open ? <Wifi className="w-3 h-3 mr-1 text-[#00FF94]" /> : <Clock className="w-3 h-3 mr-1 text-[#EAB308]" />}
+            Indian ({indian.length}) {!market_status?.indian?.open && <span className="ml-1 text-[9px] text-[#EAB308]">CLOSED</span>}
           </TabsTrigger>
         </TabsList>
 
@@ -156,6 +172,12 @@ export default function MarketsPage() {
 
         {/* FOREX TAB */}
         <TabsContent value="forex" className="mt-4">
+          {!market_status?.forex?.open && (
+            <div className="flex items-center gap-2 px-4 py-2.5 mb-3 rounded-lg bg-[#EAB308]/5 border border-[#EAB308]/20" data-testid="forex-closed-banner">
+              <Clock className="w-4 h-4 text-[#EAB308] shrink-0" />
+              <p className="text-xs text-[#EAB308]">Forex market is currently closed. Showing last closing prices. Opens Sunday 5 PM ET.</p>
+            </div>
+          )}
           <Card className="glass-panel border-white/10 overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full">
@@ -199,6 +221,12 @@ export default function MarketsPage() {
 
         {/* INDIAN TAB */}
         <TabsContent value="indian" className="mt-4">
+          {!market_status?.indian?.open && (
+            <div className="flex items-center gap-2 px-4 py-2.5 mb-3 rounded-lg bg-[#EAB308]/5 border border-[#EAB308]/20" data-testid="indian-closed-banner">
+              <Clock className="w-4 h-4 text-[#EAB308] shrink-0" />
+              <p className="text-xs text-[#EAB308]">Indian market (NSE) is currently closed. Showing last closing prices. Opens Mon-Fri 9:15 AM IST.</p>
+            </div>
+          )}
           <Card className="glass-panel border-white/10 overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full">

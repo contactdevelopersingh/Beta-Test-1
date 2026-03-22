@@ -1,0 +1,95 @@
+{
+  "summary": "Iteration 5 - Market Hours Awareness Testing. Backend: 14/14 tests passed (100%). Frontend: All market hours UI features working correctly. Key fix verified: Forex and Indian markets show CLOSED status on Sunday, prices are stable (not ticking), and appropriate UI banners are displayed.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {
+        "endpoint": "/api/market/live",
+        "issue": "CoinGecko rate limiting causing crypto data to be empty intermittently (429 Too Many Requests)",
+        "priority": "LOW",
+        "note": "External API dependency - not a code issue. Crypto data loads when rate limit recovers."
+      }
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "passed_tests": {
+    "backend": [
+      "GET /api/market/live - returns market_status field",
+      "market_status has crypto, forex, indian keys",
+      "crypto.open = true, crypto.label = '24/7'",
+      "forex.open = false, forex.label = 'Closed' (Sunday)",
+      "indian.open = false, indian.label = 'Closed' (Sunday)",
+      "Tick counter increases between polls",
+      "Forex prices stable when market closed (verified 12 pairs)",
+      "Indian prices stable when market closed (verified 44 assets)",
+      "crypto field exists in response",
+      "forex count >= 10 (got 12)",
+      "indian count >= 30 (got 44)",
+      "POST /api/auth/login - authenticates test user",
+      "GET /api/auth/me - returns user info with token",
+      "gainers and losers fields present in response"
+    ],
+    "frontend": [
+      "Login with test@signalbeast.com / Test1234! works",
+      "Dashboard shows market status bar: 'MARKET HOURS • Crypto 24/7 • Forex Closed • NSE Closed'",
+      "Dashboard shows LIVE indicator with tick counter",
+      "Dashboard Forex mini panel shows CLOSED badge",
+      "Dashboard Forex mini panel shows 'Showing last closing prices' text",
+      "Markets page Forex tab shows 'Forex (12) CLOSED'",
+      "Markets page Indian tab shows 'Indian (44) CLOSED'",
+      "Markets page Forex tab shows amber closed banner",
+      "Markets page Indian tab shows amber closed banner",
+      "Forex closed banner text: 'Forex market is currently closed. Showing last closing prices. Opens Sunday 5 PM ET.'",
+      "Indian closed banner text: 'Indian market (NSE) is currently closed. Showing last closing prices. Opens Mon-Fri 9:15 AM IST.'"
+    ]
+  },
+  "market_hours_fix_verified": {
+    "backend": {
+      "is_forex_market_open()": "Returns false on Sunday before 5PM ET",
+      "is_indian_market_open()": "Returns false on weekends",
+      "get_market_status()": "Returns correct open/closed status for all markets",
+      "_tick()": "Only applies micro-movements to open markets (crypto only on Sunday)"
+    },
+    "frontend": {
+      "useMarketStream.js": "Exposes market_status from API response",
+      "DashboardPage.js": "Shows market status bar and Forex CLOSED badge when markets closed",
+      "MarketsPage.js": "Shows CLOSED text in tabs and amber banners for closed markets"
+    },
+    "price_stability_test": {
+      "crypto": "Prices change between polls (24/7 market)",
+      "forex": "Prices stable between polls (market closed)",
+      "indian": "Prices stable between polls (market closed)"
+    }
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_market_hours.py",
+    "/app/test_reports/pytest/pytest_results_iter5.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [],
+  "updated_files": [
+    "/app/backend/tests/test_market_hours.py"
+  ],
+  "success_rate": {
+    "backend": "100% (14/14 tests passed)",
+    "frontend": "100% (all market hours UI features working)"
+  },
+  "test_credentials": {
+    "email": "test@signalbeast.com",
+    "password": "Test1234!"
+  },
+  "seed_data_creation": "None - used existing test user",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Market hours awareness fix is complete and verified. On Sunday: forex.open=false, indian.open=false, crypto.open=true. Backend _tick() only applies micro-movements to open markets. Frontend shows CLOSED badges, amber banners, and 'last closing prices' text. CoinGecko rate limiting may cause crypto data to be empty intermittently - this is an external API issue, not a code bug.",
+  "market_data_counts": {
+    "crypto": "0-25 (depends on CoinGecko rate limit)",
+    "forex": 12,
+    "indian": 44,
+    "total": "56-81"
+  }
+}

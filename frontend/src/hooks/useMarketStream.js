@@ -7,6 +7,7 @@ export const useMarketStream = (enabled = true, interval = 1500) => {
     crypto: [], forex: [], indian: [],
     gainers: [], losers: [],
     tick: 0, connected: false, initialized: false,
+    market_status: { crypto: { open: true, label: '24/7' }, forex: { open: true, label: 'Open' }, indian: { open: true, label: 'Open' } },
   });
   const [priceChanges, setPriceChanges] = useState({});
   const prevPrices = useRef({});

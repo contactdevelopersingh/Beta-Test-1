@@ -90,7 +90,7 @@ const MoverCard = ({ items, title, isGainer }) => (
 export default function DashboardPage() {
   const { api } = useAuth();
   const navigate = useNavigate();
-  const { crypto, forex, indian, gainers, losers, connected, tick, priceChanges } = useMarketStream(true, 1500);
+  const { crypto, forex, indian, gainers, losers, connected, tick, priceChanges, market_status } = useMarketStream(true, 1500);
   const [sentiment, setSentiment] = useState(null);
   const [signals, setSignals] = useState([]);
   const [portfolio, setPortfolio] = useState({ total_invested: 0, holdings_count: 0, holdings: [] });
@@ -158,6 +158,16 @@ export default function DashboardPage() {
 
       {/* Ticker Tape */}
       <TickerTape crypto={crypto} priceChanges={priceChanges} />
+
+      {/* Market Status Bar */}
+      {market_status && (!market_status.forex?.open || !market_status.indian?.open) && (
+        <div className="flex flex-wrap items-center gap-3 px-4 py-2.5 rounded-lg bg-[#EAB308]/[0.04] border border-[#EAB308]/15" data-testid="market-status-bar">
+          <span className="text-[10px] text-[#EAB308]/70 font-medium uppercase tracking-wider">Market Hours</span>
+          <div className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-[#00FF94]" /><span className="text-[10px] text-white/50 font-data">Crypto 24/7</span></div>
+          <div className="flex items-center gap-1.5"><div className={`w-1.5 h-1.5 rounded-full ${market_status.forex?.open ? 'bg-[#00FF94]' : 'bg-[#EAB308]'}`} /><span className={`text-[10px] font-data ${market_status.forex?.open ? 'text-white/50' : 'text-[#EAB308]/70'}`}>Forex {market_status.forex?.label}</span></div>
+          <div className="flex items-center gap-1.5"><div className={`w-1.5 h-1.5 rounded-full ${market_status.indian?.open ? 'bg-[#00FF94]' : 'bg-[#EAB308]'}`} /><span className={`text-[10px] font-data ${market_status.indian?.open ? 'text-white/50' : 'text-[#EAB308]/70'}`}>NSE {market_status.indian?.label}</span></div>
+        </div>
+      )}
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -337,10 +347,18 @@ export default function DashboardPage() {
           <Card className="glass-panel border-white/10" data-testid="live-forex-mini">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm text-white/80 flex items-center gap-2">
-                Forex <div className="live-dot ml-1" />
+                Forex
+                {market_status?.forex?.open ? (
+                  <div className="live-dot ml-1" />
+                ) : (
+                  <Badge variant="outline" className="ml-1 text-[8px] border-[#EAB308]/30 text-[#EAB308] py-0 h-4">CLOSED</Badge>
+                )}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-1.5">
+              {!market_status?.forex?.open && (
+                <p className="text-[10px] text-white/30 mb-2">Showing last closing prices</p>
+              )}
               {forex.slice(0, 5).map(pair => (
                 <div key={pair.id} className={`flex items-center justify-between py-1 ${priceChanges[pair.id] === 'up' ? 'price-flash-up' : priceChanges[pair.id] === 'down' ? 'price-flash-down' : ''}`}>
                   <span className="text-xs text-white/60">{pair.symbol}</span>
