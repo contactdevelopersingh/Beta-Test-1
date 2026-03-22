@@ -1,6 +1,7 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { LayoutDashboard, Zap, TrendingUp, PieChart, MessageSquare, Settings, LogOut, Menu, X, Activity } from 'lucide-react';
+import { NotificationBell } from './NotificationBell';
+import { LayoutDashboard, Zap, TrendingUp, PieChart, MessageSquare, Settings, LogOut, Menu, X, Activity, Bell } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from './ui/button';
 import { Avatar, AvatarFallback } from './ui/avatar';
@@ -12,6 +13,7 @@ const navItems = [
   { to: '/signals', icon: Zap, label: 'Signals' },
   { to: '/markets', icon: TrendingUp, label: 'Markets' },
   { to: '/portfolio', icon: PieChart, label: 'Portfolio' },
+  { to: '/alerts', icon: Bell, label: 'Alerts' },
   { to: '/chat', icon: MessageSquare, label: 'Beast AI' },
   { to: '/settings', icon: Settings, label: 'Settings' },
 ];
@@ -111,10 +113,16 @@ export const AppLayout = () => {
           <Activity className="w-5 h-5 text-[#6366F1]" />
           <span className="text-sm font-bold text-white">SignalBeast Pro</span>
         </div>
+        <div className="ml-auto">
+          <NotificationBell />
+        </div>
       </div>
 
       {/* Main Content */}
       <main className="flex-1 lg:ml-[240px] pt-14 lg:pt-0 min-h-screen">
+        <div className="hidden lg:flex items-center justify-end p-4 pb-0">
+          <NotificationBell />
+        </div>
         <div className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto">
           <Outlet />
         </div>

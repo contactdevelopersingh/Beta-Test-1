@@ -70,10 +70,8 @@ INDIAN_SYMBOL_MAP = {
     "^CNXINFRA": {"id": "niftyinfra", "name": "NIFTY Infra", "symbol": "NIFTYINFRA", "type": "index"},
     "^INDIAVIX": {"id": "indiavix", "name": "India VIX", "symbol": "INDIAVIX", "type": "index"},
     "^CNXPSUBANK": {"id": "niftypsubank", "name": "NIFTY PSU Bank", "symbol": "NIFTYPSUBANK", "type": "index"},
-    "^CNXFINANCE": {"id": "niftyfinserv", "name": "NIFTY Financial Services", "symbol": "NIFTYFINSERV", "type": "index"},
     "^CNXMEDIA": {"id": "niftymedia", "name": "NIFTY Media", "symbol": "NIFTYMEDIA", "type": "index"},
     "^CNXMNC": {"id": "niftymnc", "name": "NIFTY MNC", "symbol": "NIFTYMNC", "type": "index"},
-    "^CNXCOMMODITIES": {"id": "niftycommodities", "name": "NIFTY Commodities", "symbol": "NIFTYCOMM", "type": "index"},
     # STOCKS (NIFTY 50 Components)
     "RELIANCE.NS": {"id": "reliance", "name": "Reliance Industries", "symbol": "RELIANCE", "type": "stock"},
     "TCS.NS": {"id": "tcs", "name": "Tata Consultancy Services", "symbol": "TCS", "type": "stock"},
@@ -82,7 +80,6 @@ INDIAN_SYMBOL_MAP = {
     "ICICIBANK.NS": {"id": "icicibank", "name": "ICICI Bank", "symbol": "ICICIBANK", "type": "stock"},
     "SBIN.NS": {"id": "sbin", "name": "State Bank of India", "symbol": "SBIN", "type": "stock"},
     "ITC.NS": {"id": "itc", "name": "ITC Limited", "symbol": "ITC", "type": "stock"},
-    "TATAMOTORS.NS": {"id": "tatamotors", "name": "Tata Motors", "symbol": "TATAMOTORS", "type": "stock"},
     "BHARTIARTL.NS": {"id": "bhartiartl", "name": "Bharti Airtel", "symbol": "BHARTIARTL", "type": "stock"},
     "WIPRO.NS": {"id": "wipro", "name": "Wipro", "symbol": "WIPRO", "type": "stock"},
     "HINDUNILVR.NS": {"id": "hindunilvr", "name": "Hindustan Unilever", "symbol": "HINDUNILVR", "type": "stock"},
@@ -199,6 +196,14 @@ class SignalRequest(BaseModel):
     asset_name: str
     asset_type: str
     timeframe: str = "1D"
+
+class AlertCreate(BaseModel):
+    asset_id: str
+    asset_name: str
+    asset_type: str
+    condition: str  # "above" or "below"
+    target_price: float
+    note: Optional[str] = None
 
 # ==================== HELPERS ====================
 
@@ -556,6 +561,7 @@ async def price_ticker_loop():
     _live['initialized'] = True
     logger.info(f"Ticker ready: {len(_live['crypto'])} crypto, {len(_live['forex'])} forex, {len(_live['indian'])} indian")
 
+    _alert_counter = 0
     while True:
         try:
             now = time.time()
@@ -566,6 +572,10 @@ async def price_ticker_loop():
             if now - _live['last_indian_fetch'] > 300:
                 asyncio.create_task(_load_indian())
             _tick()
+            _alert_counter += 1
+            if _alert_counter >= 5:
+                asyncio.create_task(check_alerts())
+                _alert_counter = 0
         except Exception as e:
             logger.error(f"Ticker error: {e}")
         await asyncio.sleep(1)
@@ -797,6 +807,107 @@ async def get_chat_history(session_id: str, user: dict = Depends(get_current_use
         {"session_id": session_id, "user_id": user['user_id']}, {"_id": 0}
     ).sort("created_at", 1).to_list(100)
     return {"messages": messages}
+
+# ==================== PRICE ALERTS ====================
+
+@api_router.get("/alerts")
+async def get_alerts(user: dict = Depends(get_current_user)):
+    alerts = await db.alerts.find({"user_id": user['user_id']}, {"_id": 0}).sort("created_at", -1).to_list(50)
+    return {"alerts": alerts}
+
+@api_router.post("/alerts")
+async def create_alert(data: AlertCreate, user: dict = Depends(get_current_user)):
+    doc = {
+        "alert_id": f"alert_{uuid.uuid4().hex[:12]}",
+        "user_id": user['user_id'],
+        "asset_id": data.asset_id,
+        "asset_name": data.asset_name,
+        "asset_type": data.asset_type,
+        "condition": data.condition,
+        "target_price": data.target_price,
+        "note": data.note,
+        "status": "active",
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.alerts.insert_one(doc)
+    doc.pop('_id', None)
+    return doc
+
+@api_router.delete("/alerts/{alert_id}")
+async def delete_alert(alert_id: str, user: dict = Depends(get_current_user)):
+    result = await db.alerts.delete_one({"alert_id": alert_id, "user_id": user['user_id']})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Alert not found")
+    return {"message": "Alert deleted"}
+
+# ==================== NOTIFICATIONS ====================
+
+@api_router.get("/notifications")
+async def get_notifications(user: dict = Depends(get_current_user)):
+    notifs = await db.notifications.find({"user_id": user['user_id']}, {"_id": 0}).sort("created_at", -1).to_list(50)
+    return {"notifications": notifs}
+
+@api_router.get("/notifications/unread-count")
+async def get_unread_count(user: dict = Depends(get_current_user)):
+    count = await db.notifications.count_documents({"user_id": user['user_id'], "read": False})
+    return {"count": count}
+
+@api_router.post("/notifications/{notif_id}/read")
+async def mark_notification_read(notif_id: str, user: dict = Depends(get_current_user)):
+    await db.notifications.update_one(
+        {"notif_id": notif_id, "user_id": user['user_id']},
+        {"$set": {"read": True}}
+    )
+    return {"message": "Marked as read"}
+
+@api_router.post("/notifications/read-all")
+async def mark_all_read(user: dict = Depends(get_current_user)):
+    await db.notifications.update_many(
+        {"user_id": user['user_id'], "read": False},
+        {"$set": {"read": True}}
+    )
+    return {"message": "All marked as read"}
+
+# ==================== ALERT CHECKER (runs in ticker loop) ====================
+
+async def check_alerts():
+    """Check all active alerts against current live prices"""
+    try:
+        all_prices = {}
+        for item in _live['crypto']:
+            all_prices[item['id']] = item['price']
+        for item in _live['forex']:
+            all_prices[item['id']] = item['price']
+        for item in _live['indian']:
+            all_prices[item['id']] = item['price']
+
+        active_alerts = await db.alerts.find({"status": "active"}, {"_id": 0}).to_list(500)
+        for alert in active_alerts:
+            current_price = all_prices.get(alert['asset_id'])
+            if current_price is None:
+                continue
+            triggered = False
+            if alert['condition'] == 'above' and current_price >= alert['target_price']:
+                triggered = True
+            elif alert['condition'] == 'below' and current_price <= alert['target_price']:
+                triggered = True
+
+            if triggered:
+                await db.alerts.update_one(
+                    {"alert_id": alert['alert_id']},
+                    {"$set": {"status": "triggered", "triggered_at": datetime.now(timezone.utc).isoformat(), "triggered_price": current_price}}
+                )
+                await db.notifications.insert_one({
+                    "notif_id": f"notif_{uuid.uuid4().hex[:12]}",
+                    "user_id": alert['user_id'],
+                    "type": "alert",
+                    "title": f"Price Alert: {alert['asset_name']}",
+                    "message": f"{alert['asset_name']} is now {'above' if alert['condition'] == 'above' else 'below'} ${alert['target_price']:,.2f} (Current: ${current_price:,.2f})",
+                    "read": False,
+                    "created_at": datetime.now(timezone.utc).isoformat()
+                })
+    except Exception as e:
+        logger.error(f"Alert check error: {e}")
 
 # ==================== APP SETUP ====================
 
