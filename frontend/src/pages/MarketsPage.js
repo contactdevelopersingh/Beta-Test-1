@@ -6,7 +6,7 @@ import { Input } from '../components/ui/input';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { AreaChart, Area, ResponsiveContainer } from 'recharts';
-import { Search, TrendingUp, TrendingDown, Star, Plus, RefreshCw } from 'lucide-react';
+import { Search, TrendingUp, TrendingDown, Star, Plus, RefreshCw, Wifi } from 'lucide-react';
 import { toast } from 'sonner';
 
 const formatPrice = (p, digits) => {
@@ -43,6 +43,8 @@ export default function MarketsPage() {
   const [forexPairs, setForexPairs] = useState([]);
   const [indianStocks, setIndianStocks] = useState([]);
   const [search, setSearch] = useState('');
+  const [forexSource, setForexSource] = useState('');
+  const [indianSource, setIndianSource] = useState('');
   const [loading, setLoading] = useState(true);
 
   const fetchData = async () => {
@@ -54,8 +56,14 @@ export default function MarketsPage() {
         api.get('/market/indian'),
       ]);
       if (c.status === 'fulfilled') setCryptoCoins(c.value.data.coins || []);
-      if (f.status === 'fulfilled') setForexPairs(f.value.data.pairs || []);
-      if (ind.status === 'fulfilled') setIndianStocks(ind.value.data.stocks || []);
+      if (f.status === 'fulfilled') {
+        setForexPairs(f.value.data.pairs || []);
+        setForexSource(f.value.data.source || '');
+      }
+      if (ind.status === 'fulfilled') {
+        setIndianStocks(ind.value.data.stocks || []);
+        setIndianSource(ind.value.data.source || '');
+      }
     } catch (e) { console.error(e); }
     setLoading(false);
   };
@@ -99,9 +107,15 @@ export default function MarketsPage() {
 
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList className="bg-white/5">
-          <TabsTrigger value="crypto" className="text-xs data-[state=active]:bg-[#6366F1] data-[state=active]:text-white" data-testid="crypto-tab">Crypto</TabsTrigger>
-          <TabsTrigger value="forex" className="text-xs data-[state=active]:bg-[#6366F1] data-[state=active]:text-white" data-testid="forex-tab">Forex</TabsTrigger>
-          <TabsTrigger value="indian" className="text-xs data-[state=active]:bg-[#6366F1] data-[state=active]:text-white" data-testid="indian-tab">Indian</TabsTrigger>
+          <TabsTrigger value="crypto" className="text-xs data-[state=active]:bg-[#6366F1] data-[state=active]:text-white" data-testid="crypto-tab">
+            <Wifi className="w-3 h-3 mr-1 text-[#00FF94]" /> Crypto
+          </TabsTrigger>
+          <TabsTrigger value="forex" className="text-xs data-[state=active]:bg-[#6366F1] data-[state=active]:text-white" data-testid="forex-tab">
+            {forexSource === 'live' && <Wifi className="w-3 h-3 mr-1 text-[#00FF94]" />} Forex
+          </TabsTrigger>
+          <TabsTrigger value="indian" className="text-xs data-[state=active]:bg-[#6366F1] data-[state=active]:text-white" data-testid="indian-tab">
+            {indianSource === 'live' && <Wifi className="w-3 h-3 mr-1 text-[#00FF94]" />} Indian
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="crypto" className="mt-4">
@@ -166,24 +180,27 @@ export default function MarketsPage() {
                   <tr className="text-[10px] text-white/40 uppercase tracking-wider">
                     <th className="text-left py-3 px-4">Pair</th>
                     <th className="text-right py-3 px-4">Price</th>
-                    <th className="text-right py-3 px-4">24h Change</th>
+                    <th className="text-right py-3 px-4">Change</th>
                     <th className="text-right py-3 px-4 hidden sm:table-cell">High</th>
                     <th className="text-right py-3 px-4 hidden sm:table-cell">Low</th>
-                    <th className="text-right py-3 px-4 hidden md:table-cell">Volume</th>
+                    <th className="text-right py-3 px-4 hidden md:table-cell">Prev Close</th>
                     <th className="text-right py-3 px-4"></th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredForex.map(pair => (
                     <tr key={pair.id} className="market-row border-b border-white/[0.03]" data-testid={`market-forex-${pair.id}`}>
-                      <td className="py-3 px-4"><span className="text-sm text-white font-medium">{pair.symbol}</span></td>
-                      <td className="py-3 px-4 text-right text-sm text-white font-data">{formatPrice(pair.price, pair.price < 10 ? 4 : 2)}</td>
-                      <td className={`py-3 px-4 text-right text-xs font-data ${pair.change_24h >= 0 ? 'text-[#00FF94]' : 'text-[#FF2E2E]'}`}>
-                        {pair.change_24h >= 0 ? '+' : ''}{pair.change_24h}%
+                      <td className="py-3 px-4">
+                        <span className="text-sm text-white font-medium">{pair.symbol}</span>
+                        {pair.name !== pair.symbol && <span className="text-[10px] text-white/30 ml-2">{pair.name}</span>}
+                      </td>
+                      <td className="py-3 px-4 text-right text-sm text-white font-data font-medium">{formatPrice(pair.price, pair.price < 10 ? 4 : 2)}</td>
+                      <td className={`py-3 px-4 text-right text-xs font-data font-medium ${pair.change_24h >= 0 ? 'text-[#00FF94]' : 'text-[#FF2E2E]'}`}>
+                        {pair.change_24h >= 0 ? '+' : ''}{pair.change_24h?.toFixed(2)}%
                       </td>
                       <td className="py-3 px-4 text-right text-xs text-white/50 font-data hidden sm:table-cell">{formatPrice(pair.high_24h, pair.price < 10 ? 4 : 2)}</td>
                       <td className="py-3 px-4 text-right text-xs text-white/50 font-data hidden sm:table-cell">{formatPrice(pair.low_24h, pair.price < 10 ? 4 : 2)}</td>
-                      <td className="py-3 px-4 text-right text-xs text-white/40 font-data hidden md:table-cell">${formatVol(pair.volume)}</td>
+                      <td className="py-3 px-4 text-right text-xs text-white/40 font-data hidden md:table-cell">{pair.prev_close ? formatPrice(pair.prev_close, pair.price < 10 ? 4 : 2) : '-'}</td>
                       <td className="py-3 px-4 text-right">
                         <Button variant="ghost" size="icon" className="w-7 h-7 text-white/30 hover:text-[#6366F1]"
                           onClick={() => addToWatchlist(pair.id, pair.name, 'forex')} data-testid={`watchlist-add-${pair.id}`}>
@@ -207,27 +224,31 @@ export default function MarketsPage() {
                     <th className="text-left py-3 px-4">Name</th>
                     <th className="text-left py-3 px-4">Symbol</th>
                     <th className="text-right py-3 px-4">Price (INR)</th>
-                    <th className="text-right py-3 px-4">24h Change</th>
-                    <th className="text-right py-3 px-4 hidden sm:table-cell">Type</th>
+                    <th className="text-right py-3 px-4">Change</th>
+                    <th className="text-right py-3 px-4 hidden sm:table-cell">High</th>
+                    <th className="text-right py-3 px-4 hidden sm:table-cell">Low</th>
                     <th className="text-right py-3 px-4 hidden md:table-cell">Volume</th>
                     <th className="text-right py-3 px-4"></th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredIndian.map(stock => (
+                  {/* Indices Section */}
+                  {filteredIndian.filter(s => s.type === 'index').length > 0 && (
+                    <tr><td colSpan={8} className="py-2 px-4 bg-[#6366F1]/5 border-b border-[#6366F1]/10">
+                      <span className="text-[10px] font-semibold text-[#6366F1] uppercase tracking-widest">Indices</span>
+                    </td></tr>
+                  )}
+                  {filteredIndian.filter(s => s.type === 'index').map(stock => (
                     <tr key={stock.id} className="market-row border-b border-white/[0.03]" data-testid={`market-indian-${stock.id}`}>
-                      <td className="py-3 px-4"><span className="text-sm text-white font-medium">{stock.name}</span></td>
-                      <td className="py-3 px-4 text-xs text-white/50 font-data">{stock.symbol}</td>
-                      <td className="py-3 px-4 text-right text-sm text-white font-data">INR {formatPrice(stock.price)}</td>
-                      <td className={`py-3 px-4 text-right text-xs font-data ${stock.change_24h >= 0 ? 'text-[#00FF94]' : 'text-[#FF2E2E]'}`}>
-                        {stock.change_24h >= 0 ? '+' : ''}{stock.change_24h}%
+                      <td className="py-3 px-4"><span className="text-sm text-white font-semibold">{stock.name}</span></td>
+                      <td className="py-3 px-4 text-xs text-[#6366F1] font-data font-medium">{stock.symbol}</td>
+                      <td className="py-3 px-4 text-right text-sm text-white font-data font-semibold">{formatPrice(stock.price)}</td>
+                      <td className={`py-3 px-4 text-right text-xs font-data font-medium ${stock.change_24h >= 0 ? 'text-[#00FF94]' : 'text-[#FF2E2E]'}`}>
+                        {stock.change_24h >= 0 ? '+' : ''}{stock.change_24h?.toFixed(2)}%
                       </td>
-                      <td className="py-3 px-4 text-right hidden sm:table-cell">
-                        <Badge variant="outline" className={`text-[10px] ${stock.type === 'index' ? 'border-[#6366F1]/30 text-[#6366F1]' : 'border-white/20 text-white/50'}`}>
-                          {stock.type || 'stock'}
-                        </Badge>
-                      </td>
-                      <td className="py-3 px-4 text-right text-xs text-white/40 font-data hidden md:table-cell">INR {formatVol(stock.volume)}</td>
+                      <td className="py-3 px-4 text-right text-xs text-white/50 font-data hidden sm:table-cell">{formatPrice(stock.high_24h)}</td>
+                      <td className="py-3 px-4 text-right text-xs text-white/50 font-data hidden sm:table-cell">{formatPrice(stock.low_24h)}</td>
+                      <td className="py-3 px-4 text-right text-xs text-white/40 font-data hidden md:table-cell">{formatVol(stock.volume)}</td>
                       <td className="py-3 px-4 text-right">
                         <Button variant="ghost" size="icon" className="w-7 h-7 text-white/30 hover:text-[#6366F1]"
                           onClick={() => addToWatchlist(stock.id, stock.name, 'indian')} data-testid={`watchlist-add-${stock.id}`}>
@@ -236,6 +257,34 @@ export default function MarketsPage() {
                       </td>
                     </tr>
                   ))}
+                  {/* Stocks Section */}
+                  {filteredIndian.filter(s => s.type === 'stock').length > 0 && (
+                    <tr><td colSpan={8} className="py-2 px-4 bg-[#00FF94]/5 border-b border-[#00FF94]/10">
+                      <span className="text-[10px] font-semibold text-[#00FF94] uppercase tracking-widest">Stocks</span>
+                    </td></tr>
+                  )}
+                  {filteredIndian.filter(s => s.type === 'stock').map(stock => (
+                    <tr key={stock.id} className="market-row border-b border-white/[0.03]" data-testid={`market-indian-${stock.id}`}>
+                      <td className="py-3 px-4"><span className="text-sm text-white font-medium">{stock.name}</span></td>
+                      <td className="py-3 px-4 text-xs text-white/50 font-data">{stock.symbol}</td>
+                      <td className="py-3 px-4 text-right text-sm text-white font-data">{formatPrice(stock.price)}</td>
+                      <td className={`py-3 px-4 text-right text-xs font-data ${stock.change_24h >= 0 ? 'text-[#00FF94]' : 'text-[#FF2E2E]'}`}>
+                        {stock.change_24h >= 0 ? '+' : ''}{stock.change_24h?.toFixed(2)}%
+                      </td>
+                      <td className="py-3 px-4 text-right text-xs text-white/50 font-data hidden sm:table-cell">{formatPrice(stock.high_24h)}</td>
+                      <td className="py-3 px-4 text-right text-xs text-white/50 font-data hidden sm:table-cell">{formatPrice(stock.low_24h)}</td>
+                      <td className="py-3 px-4 text-right text-xs text-white/40 font-data hidden md:table-cell">{formatVol(stock.volume)}</td>
+                      <td className="py-3 px-4 text-right">
+                        <Button variant="ghost" size="icon" className="w-7 h-7 text-white/30 hover:text-[#6366F1]"
+                          onClick={() => addToWatchlist(stock.id, stock.name, 'indian')} data-testid={`watchlist-add-${stock.id}`}>
+                          <Star className="w-3.5 h-3.5" />
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                  {filteredIndian.length === 0 && !loading && (
+                    <tr><td colSpan={8} className="py-8 text-center text-sm text-white/30">Loading Indian market data...</td></tr>
+                  )}
                 </tbody>
               </table>
             </div>

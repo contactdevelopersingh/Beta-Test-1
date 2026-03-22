@@ -20,9 +20,14 @@ const FOREX_ASSETS = [
 ];
 
 const INDIAN_ASSETS = [
+  { id: 'nifty50', name: 'NIFTY 50' }, { id: 'sensex', name: 'SENSEX' },
+  { id: 'banknifty', name: 'NIFTY Bank' }, { id: 'niftyit', name: 'NIFTY IT' },
+  { id: 'niftypharma', name: 'NIFTY Pharma' }, { id: 'niftyauto', name: 'NIFTY Auto' },
   { id: 'reliance', name: 'Reliance Industries' }, { id: 'tcs', name: 'TCS' },
   { id: 'infy', name: 'Infosys' }, { id: 'hdfcbank', name: 'HDFC Bank' },
-  { id: 'nifty50', name: 'NIFTY 50' }, { id: 'sensex', name: 'SENSEX' },
+  { id: 'sbin', name: 'State Bank of India' }, { id: 'icicibank', name: 'ICICI Bank' },
+  { id: 'tatamotors', name: 'Tata Motors' }, { id: 'bhartiartl', name: 'Bharti Airtel' },
+  { id: 'bajfinance', name: 'Bajaj Finance' }, { id: 'adanient', name: 'Adani Enterprises' },
 ];
 
 const TIMEFRAMES = ['5m', '15m', '1H', '4H', '1D', '1W'];
