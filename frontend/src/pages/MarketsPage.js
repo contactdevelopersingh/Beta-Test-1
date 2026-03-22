@@ -8,6 +8,7 @@ import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { AreaChart, Area, ResponsiveContainer } from 'recharts';
 import { Search, TrendingUp, TrendingDown, Star, RefreshCw, Wifi } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
 const fmtPrice = (p, dec) => {
@@ -38,6 +39,7 @@ const MiniChart = ({ data, positive }) => {
 
 export default function MarketsPage() {
   const { api } = useAuth();
+  const navigate = useNavigate();
   const { crypto, forex, indian, connected, tick, priceChanges } = useMarketStream(true, 1500);
   const [tab, setTab] = useState('crypto');
   const [search, setSearch] = useState('');
@@ -119,7 +121,7 @@ export default function MarketsPage() {
                 </thead>
                 <tbody>
                   {filteredCrypto.map((coin, i) => (
-                    <tr key={coin.id} className={`market-row border-b border-white/[0.03] ${priceChanges[coin.id] === 'up' ? 'price-flash-up' : priceChanges[coin.id] === 'down' ? 'price-flash-down' : ''}`} data-testid={`market-crypto-${coin.id}`}>
+                    <tr key={coin.id} className={`market-row border-b border-white/[0.03] cursor-pointer ${priceChanges[coin.id] === 'up' ? 'price-flash-up' : priceChanges[coin.id] === 'down' ? 'price-flash-down' : ''}`} data-testid={`market-crypto-${coin.id}`} onClick={() => navigate(`/chart/crypto/${coin.id}`)}>
                       <td className="py-3 px-4 text-xs text-white/30 font-data">{i+1}</td>
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-2.5">
@@ -140,7 +142,7 @@ export default function MarketsPage() {
                       <td className="py-3 px-4 text-right text-xs text-white/60 font-data hidden sm:table-cell">${fmtVol(coin.market_cap)}</td>
                       <td className="py-3 px-4 text-right text-xs text-white/40 font-data hidden lg:table-cell">${fmtVol(coin.volume)}</td>
                       <td className="py-3 px-4 text-right">
-                        <Button variant="ghost" size="icon" className="w-7 h-7 text-white/30 hover:text-[#6366F1]" onClick={() => addToWatchlist(coin.id, coin.name, 'crypto')} data-testid={`watchlist-add-${coin.id}`}>
+                        <Button variant="ghost" size="icon" className="w-7 h-7 text-white/30 hover:text-[#6366F1]" onClick={(e) => { e.stopPropagation(); addToWatchlist(coin.id, coin.name, 'crypto'); }} data-testid={`watchlist-add-${coin.id}`}>
                           <Star className="w-3.5 h-3.5" />
                         </Button>
                       </td>
@@ -170,7 +172,7 @@ export default function MarketsPage() {
                 </thead>
                 <tbody>
                   {filteredForex.map(pair => (
-                    <tr key={pair.id} className={`market-row border-b border-white/[0.03] ${priceChanges[pair.id] === 'up' ? 'price-flash-up' : priceChanges[pair.id] === 'down' ? 'price-flash-down' : ''}`} data-testid={`market-forex-${pair.id}`}>
+                    <tr key={pair.id} className={`market-row border-b border-white/[0.03] cursor-pointer ${priceChanges[pair.id] === 'up' ? 'price-flash-up' : priceChanges[pair.id] === 'down' ? 'price-flash-down' : ''}`} data-testid={`market-forex-${pair.id}`} onClick={() => navigate(`/chart/forex/${pair.id}`)}>
                       <td className="py-3 px-4">
                         <span className="text-sm text-white font-medium">{pair.symbol}</span>
                         {pair.name !== pair.symbol && <span className="text-[10px] text-white/30 ml-2">{pair.name}</span>}
@@ -183,7 +185,7 @@ export default function MarketsPage() {
                       <td className="py-3 px-4 text-right text-xs text-white/50 font-data hidden sm:table-cell">{fmtPrice(pair.low, pair.price < 50 ? 4 : 2)}</td>
                       <td className="py-3 px-4 text-right text-xs text-white/40 font-data hidden md:table-cell">{pair.prev_close ? fmtPrice(pair.prev_close, pair.price < 50 ? 4 : 2) : '-'}</td>
                       <td className="py-3 px-4 text-right">
-                        <Button variant="ghost" size="icon" className="w-7 h-7 text-white/30 hover:text-[#6366F1]" onClick={() => addToWatchlist(pair.id, pair.name, 'forex')} data-testid={`watchlist-add-${pair.id}`}>
+                        <Button variant="ghost" size="icon" className="w-7 h-7 text-white/30 hover:text-[#6366F1]" onClick={(e) => { e.stopPropagation(); addToWatchlist(pair.id, pair.name, 'forex'); }} data-testid={`watchlist-add-${pair.id}`}>
                           <Star className="w-3.5 h-3.5" />
                         </Button>
                       </td>
@@ -220,7 +222,7 @@ export default function MarketsPage() {
                     </td></tr>
                   )}
                   {filteredIndian.filter(s => s.type === 'index').map(s => (
-                    <tr key={s.id} className={`market-row border-b border-white/[0.03] ${priceChanges[s.id] === 'up' ? 'price-flash-up' : priceChanges[s.id] === 'down' ? 'price-flash-down' : ''}`} data-testid={`market-indian-${s.id}`}>
+                    <tr key={s.id} className={`market-row border-b border-white/[0.03] cursor-pointer ${priceChanges[s.id] === 'up' ? 'price-flash-up' : priceChanges[s.id] === 'down' ? 'price-flash-down' : ''}`} data-testid={`market-indian-${s.id}`} onClick={() => navigate(`/chart/indian/${s.id}`)}>
                       <td className="py-3 px-4"><span className="text-sm text-white font-semibold">{s.name}</span></td>
                       <td className="py-3 px-4 text-xs text-[#6366F1] font-data font-medium">{s.symbol}</td>
                       <td className="py-3 px-4 text-right text-sm text-white font-data font-semibold price-value">{fmtPrice(s.price)}</td>
@@ -229,7 +231,7 @@ export default function MarketsPage() {
                       <td className="py-3 px-4 text-right text-xs text-white/50 font-data hidden sm:table-cell">{fmtPrice(s.low)}</td>
                       <td className="py-3 px-4 text-right text-xs text-white/40 font-data hidden md:table-cell">{fmtVol(s.volume)}</td>
                       <td className="py-3 px-4 text-right">
-                        <Button variant="ghost" size="icon" className="w-7 h-7 text-white/30 hover:text-[#6366F1]" onClick={() => addToWatchlist(s.id, s.name, 'indian')} data-testid={`watchlist-add-${s.id}`}><Star className="w-3.5 h-3.5" /></Button>
+                        <Button variant="ghost" size="icon" className="w-7 h-7 text-white/30 hover:text-[#6366F1]" onClick={(e) => { e.stopPropagation(); addToWatchlist(s.id, s.name, 'indian'); }} data-testid={`watchlist-add-${s.id}`}><Star className="w-3.5 h-3.5" /></Button>
                       </td>
                     </tr>
                   ))}
@@ -240,7 +242,7 @@ export default function MarketsPage() {
                     </td></tr>
                   )}
                   {filteredIndian.filter(s => s.type === 'stock').map(s => (
-                    <tr key={s.id} className={`market-row border-b border-white/[0.03] ${priceChanges[s.id] === 'up' ? 'price-flash-up' : priceChanges[s.id] === 'down' ? 'price-flash-down' : ''}`} data-testid={`market-indian-${s.id}`}>
+                    <tr key={s.id} className={`market-row border-b border-white/[0.03] cursor-pointer ${priceChanges[s.id] === 'up' ? 'price-flash-up' : priceChanges[s.id] === 'down' ? 'price-flash-down' : ''}`} data-testid={`market-indian-${s.id}`} onClick={() => navigate(`/chart/indian/${s.id}`)}>
                       <td className="py-3 px-4"><span className="text-sm text-white font-medium">{s.name}</span></td>
                       <td className="py-3 px-4 text-xs text-white/50 font-data">{s.symbol}</td>
                       <td className="py-3 px-4 text-right text-sm text-white font-data price-value">{fmtPrice(s.price)}</td>
@@ -249,7 +251,7 @@ export default function MarketsPage() {
                       <td className="py-3 px-4 text-right text-xs text-white/50 font-data hidden sm:table-cell">{fmtPrice(s.low)}</td>
                       <td className="py-3 px-4 text-right text-xs text-white/40 font-data hidden md:table-cell">{fmtVol(s.volume)}</td>
                       <td className="py-3 px-4 text-right">
-                        <Button variant="ghost" size="icon" className="w-7 h-7 text-white/30 hover:text-[#6366F1]" onClick={() => addToWatchlist(s.id, s.name, 'indian')} data-testid={`watchlist-add-${s.id}`}><Star className="w-3.5 h-3.5" /></Button>
+                        <Button variant="ghost" size="icon" className="w-7 h-7 text-white/30 hover:text-[#6366F1]" onClick={(e) => { e.stopPropagation(); addToWatchlist(s.id, s.name, 'indian'); }} data-testid={`watchlist-add-${s.id}`}><Star className="w-3.5 h-3.5" /></Button>
                       </td>
                     </tr>
                   ))}

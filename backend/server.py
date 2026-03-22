@@ -375,6 +375,49 @@ async def get_crypto_chart(coin_id: str, days: int = 7):
     data = await cached_get(url, ttl=300)
     return data
 
+@api_router.get("/market/chart/{asset_type}/{asset_id}")
+async def get_asset_chart(asset_type: str, asset_id: str, period: str = "1mo"):
+    """Get OHLCV chart data for any asset"""
+    if asset_type == "crypto":
+        days_map = {"1d": 1, "7d": 7, "1mo": 30, "3mo": 90, "1y": 365}
+        days = days_map.get(period, 30)
+        url = f"{COINGECKO_BASE}/coins/{asset_id}/ohlc?vs_currency=usd&days={days}"
+        try:
+            raw = await cached_get(url, ttl=300)
+            candles = []
+            for c in raw:
+                candles.append({"time": int(c[0] / 1000), "open": c[1], "high": c[2], "low": c[3], "close": c[4]})
+            return {"candles": candles, "asset_id": asset_id, "period": period}
+        except Exception:
+            return {"candles": [], "asset_id": asset_id, "period": period}
+    else:
+        # Forex or Indian - use yfinance
+        sym_map = {**{v['id']: k for k, v in FOREX_SYMBOL_MAP.items()}, **{v['id']: k for k, v in INDIAN_SYMBOL_MAP.items()}}
+        yf_symbol = sym_map.get(asset_id)
+        if not yf_symbol:
+            return {"candles": [], "asset_id": asset_id, "period": period}
+        try:
+            loop = asyncio.get_event_loop()
+            def _fetch():
+                t = yf.Ticker(yf_symbol)
+                hist = t.history(period=period)
+                candles = []
+                for idx, row in hist.iterrows():
+                    candles.append({
+                        "time": int(idx.timestamp()),
+                        "open": round(float(row['Open']), 4 if float(row['Open']) < 50 else 2),
+                        "high": round(float(row['High']), 4 if float(row['High']) < 50 else 2),
+                        "low": round(float(row['Low']), 4 if float(row['Low']) < 50 else 2),
+                        "close": round(float(row['Close']), 4 if float(row['Close']) < 50 else 2),
+                        "volume": int(row['Volume']) if row['Volume'] > 0 else 0,
+                    })
+                return candles
+            candles = await loop.run_in_executor(_executor, _fetch)
+            return {"candles": candles, "asset_id": asset_id, "period": period}
+        except Exception as e:
+            logger.error(f"Chart fetch error for {asset_id}: {e}")
+            return {"candles": [], "asset_id": asset_id, "period": period}
+
 @api_router.get("/market/sentiment")
 async def get_market_sentiment():
     try:

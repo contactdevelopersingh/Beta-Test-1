@@ -12,6 +12,8 @@ import SignalsPage from './pages/SignalsPage';
 import MarketsPage from './pages/MarketsPage';
 import PortfolioPage from './pages/PortfolioPage';
 import AlertsPage from './pages/AlertsPage';
+import ChartPage from './pages/ChartPage';
+import StrategyPage from './pages/StrategyPage';
 import ChatPage from './pages/ChatPage';
 import SettingsPage from './pages/SettingsPage';
 
@@ -37,6 +39,8 @@ function AppRouter() {
         <Route path="/markets" element={<MarketsPage />} />
         <Route path="/portfolio" element={<PortfolioPage />} />
         <Route path="/alerts" element={<AlertsPage />} />
+        <Route path="/chart/:assetType/:assetId" element={<ChartPage />} />
+        <Route path="/strategy" element={<StrategyPage />} />
         <Route path="/chat" element={<ChatPage />} />
         <Route path="/settings" element={<SettingsPage />} />
       </Route>

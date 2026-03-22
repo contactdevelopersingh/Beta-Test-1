@@ -1,7 +1,7 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { NotificationBell } from './NotificationBell';
-import { LayoutDashboard, Zap, TrendingUp, PieChart, MessageSquare, Settings, LogOut, Menu, X, Activity, Bell } from 'lucide-react';
+import { LayoutDashboard, Zap, TrendingUp, PieChart, MessageSquare, Settings, LogOut, Menu, X, Activity, Bell, Layers } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from './ui/button';
 import { Avatar, AvatarFallback } from './ui/avatar';
@@ -14,6 +14,7 @@ const navItems = [
   { to: '/markets', icon: TrendingUp, label: 'Markets' },
   { to: '/portfolio', icon: PieChart, label: 'Portfolio' },
   { to: '/alerts', icon: Bell, label: 'Alerts' },
+  { to: '/strategy', icon: Layers, label: 'Strategy' },
   { to: '/chat', icon: MessageSquare, label: 'Beast AI' },
   { to: '/settings', icon: Settings, label: 'Settings' },
 ];
