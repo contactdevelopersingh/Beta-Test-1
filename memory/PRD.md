@@ -30,18 +30,23 @@ Build SignalBeast Pro - an advanced trading intelligence platform providing reta
 - [x] Auth Page - Login/Register with JWT + Google OAuth
 - [x] Dashboard - Portfolio summary, BTC chart, top coins, sentiment gauge, latest signals
 - [x] Signals Page - AI signal generator (crypto/forex/indian), signal cards with confidence rings
-- [x] Markets Page - Crypto/Forex/Indian tabs with live data tables, search, sparklines
+- [x] Markets Page - Crypto/Forex/Indian tabs with LIVE data tables, search, sparklines
 - [x] Portfolio Page - Holdings CRUD, allocation pie chart, summary cards
 - [x] Beast AI Chat - Conversational AI trading assistant
 - [x] Settings Page - Profile, notifications, appearance, security
 
 ### Backend APIs
 - [x] Auth: register, login, session (Google OAuth), me, logout
-- [x] Market Data: crypto/top, crypto/{id}, crypto/{id}/chart, trending, forex, indian, sentiment
-- [x] Signals: list, generate (AI-powered)
+- [x] Market Data: crypto/top (CoinGecko LIVE), forex (Yahoo Finance LIVE), indian (Yahoo Finance LIVE with 15 indices + 29 stocks), sentiment
+- [x] Signals: list, generate (AI-powered with diverse confidence 40-98% and varied grades)
 - [x] Portfolio: CRUD holdings, summary
 - [x] Watchlist: CRUD items
 - [x] Chat: send message (AI), history
+
+### Live Data Sources (Updated March 22, 2026)
+- Crypto: CoinGecko API (live real-time prices, charts, market cap, sentiment)
+- Forex: Yahoo Finance via yfinance (EUR/USD, GBP/USD, USD/JPY, AUD/USD, Gold, Silver, + 6 more pairs)
+- Indian Market: Yahoo Finance via yfinance (NIFTY 50, SENSEX, Bank Nifty, NIFTY IT, Pharma, Auto, FMCG, Metal, Energy, Realty, Infra, India VIX, PSU Bank, Financial Services, Media, MNC, Commodities + 29 major stocks)
 
 ### Design
 - Dark theme (#050505 bg, #6366F1 primary, #00FF94 buy, #FF2E2E sell)
