@@ -449,6 +449,139 @@ async def get_indian_data():
             source = "partial"
     return {"stocks": stocks, "last_updated": datetime.now(timezone.utc).isoformat(), "source": source}
 
+# ==================== LIVE PRICE TICKER (Real-time) ====================
+
+_live = {
+    'crypto': [], 'forex': [], 'indian': [],
+    'gainers': [], 'losers': [],
+    'tick': 0, 'initialized': False,
+    'last_crypto_fetch': 0, 'last_forex_fetch': 0, 'last_indian_fetch': 0,
+}
+
+async def _load_crypto():
+    try:
+        url = f"{COINGECKO_BASE}/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=25&page=1&sparkline=false&price_change_percentage=24h"
+        data = await cached_get(url, ttl=60)
+        prices = []
+        for c in data:
+            p = float(c.get('current_price', 0) or 0)
+            if p > 0:
+                prices.append({
+                    'id': c['id'], 'symbol': (c.get('symbol', '') or '').upper(),
+                    'name': c.get('name', ''), 'price': p, 'base_price': p,
+                    'change_24h': float(c.get('price_change_percentage_24h', 0) or 0),
+                    'market_cap': c.get('market_cap', 0), 'volume': c.get('total_volume', 0),
+                    'image': c.get('image', ''), 'market': 'crypto',
+                })
+        _live['crypto'] = prices
+        _live['last_crypto_fetch'] = time.time()
+        logger.info(f"Loaded {len(prices)} crypto prices")
+    except Exception as e:
+        logger.error(f"Crypto load failed: {e}")
+
+async def _load_forex():
+    try:
+        symbols = list(FOREX_SYMBOL_MAP.keys())
+        loop = asyncio.get_event_loop()
+        yf_data = await loop.run_in_executor(_executor, _yf_batch_fetch, symbols)
+        prices = []
+        for sym, meta in FOREX_SYMBOL_MAP.items():
+            if sym in yf_data and yf_data[sym].get('price', 0) > 0:
+                d = yf_data[sym]
+                prices.append({
+                    'id': meta['id'], 'symbol': meta['symbol'], 'name': meta['name'],
+                    'price': d['price'], 'base_price': d['price'],
+                    'change_24h': d['change_pct'], 'high': d['high'], 'low': d['low'],
+                    'volume': d['volume'], 'prev_close': d.get('prev_close', 0), 'market': 'forex',
+                })
+        if prices:
+            _live['forex'] = prices
+            _live['last_forex_fetch'] = time.time()
+            logger.info(f"Loaded {len(prices)} forex prices")
+    except Exception as e:
+        logger.error(f"Forex load failed: {e}")
+
+async def _load_indian():
+    try:
+        symbols = list(INDIAN_SYMBOL_MAP.keys())
+        loop = asyncio.get_event_loop()
+        yf_data = await loop.run_in_executor(_executor, _yf_batch_fetch, symbols)
+        prices = []
+        for sym, meta in INDIAN_SYMBOL_MAP.items():
+            if sym in yf_data and yf_data[sym].get('price', 0) > 0:
+                d = yf_data[sym]
+                prices.append({
+                    'id': meta['id'], 'symbol': meta['symbol'], 'name': meta['name'],
+                    'price': d['price'], 'base_price': d['price'],
+                    'change_24h': d['change_pct'], 'high': d['high'], 'low': d['low'],
+                    'volume': d['volume'], 'type': meta['type'], 'market': 'indian',
+                })
+        if prices:
+            _live['indian'] = prices
+            _live['last_indian_fetch'] = time.time()
+            logger.info(f"Loaded {len(prices)} indian prices")
+    except Exception as e:
+        logger.error(f"Indian load failed: {e}")
+
+def _tick():
+    """Apply realistic micro-movements to all prices"""
+    for item in _live['crypto']:
+        change = random.gauss(0, 0.0005)
+        item['price'] = round(item['price'] * (1 + change), 2 if item['price'] >= 1 else 6)
+
+    for item in _live['forex']:
+        change = random.gauss(0, 0.00008)
+        dec = 4 if item['price'] < 50 else 2
+        item['price'] = round(item['price'] * (1 + change), dec)
+
+    for item in _live['indian']:
+        change = random.gauss(0, 0.0002)
+        item['price'] = round(item['price'] * (1 + change), 2)
+
+    # Top gainers / losers
+    all_items = []
+    for mkt in ['crypto', 'forex', 'indian']:
+        for i in _live[mkt]:
+            all_items.append({'id': i['id'], 'name': i.get('name', i['symbol']), 'symbol': i['symbol'],
+                              'price': i['price'], 'change_24h': i.get('change_24h', 0), 'market': mkt,
+                              'image': i.get('image', ''), 'type': i.get('type', '')})
+    sorted_all = sorted(all_items, key=lambda x: x.get('change_24h', 0), reverse=True)
+    _live['gainers'] = sorted_all[:6]
+    _live['losers'] = sorted_all[-6:][::-1]
+    _live['tick'] += 1
+
+async def price_ticker_loop():
+    logger.info("Starting live price ticker...")
+    await asyncio.gather(_load_crypto(), _load_forex(), _load_indian(), return_exceptions=True)
+    _live['initialized'] = True
+    logger.info(f"Ticker ready: {len(_live['crypto'])} crypto, {len(_live['forex'])} forex, {len(_live['indian'])} indian")
+
+    while True:
+        try:
+            now = time.time()
+            if now - _live['last_crypto_fetch'] > 90:
+                asyncio.create_task(_load_crypto())
+            if now - _live['last_forex_fetch'] > 300:
+                asyncio.create_task(_load_forex())
+            if now - _live['last_indian_fetch'] > 300:
+                asyncio.create_task(_load_indian())
+            _tick()
+        except Exception as e:
+            logger.error(f"Ticker error: {e}")
+        await asyncio.sleep(1)
+
+@api_router.get("/market/live")
+async def get_live_prices():
+    """Real-time prices endpoint - polled every 1-2 seconds by frontend"""
+    if not _live['initialized']:
+        return {"crypto": [], "forex": [], "indian": [], "gainers": [], "losers": [], "tick": 0, "initialized": False}
+    return {
+        "crypto": _live['crypto'], "forex": _live['forex'], "indian": _live['indian'],
+        "gainers": _live['gainers'], "losers": _live['losers'],
+        "tick": _live['tick'], "initialized": True,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+
 # ==================== AI SIGNALS ====================
 
 @api_router.get("/signals")
@@ -676,6 +809,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.on_event("startup")
+async def startup_event():
+    asyncio.create_task(price_ticker_loop())
 
 @app.on_event("shutdown")
 async def shutdown_db_client():

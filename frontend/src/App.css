@@ -71,6 +71,33 @@
   animation: float 3s ease-in-out infinite;
 }
 
+@keyframes flash-green {
+  0% { background-color: rgba(0, 255, 148, 0.2); }
+  100% { background-color: transparent; }
+}
+@keyframes flash-red {
+  0% { background-color: rgba(255, 46, 46, 0.2); }
+  100% { background-color: transparent; }
+}
+.price-flash-up { animation: flash-green 0.7s ease-out; }
+.price-flash-down { animation: flash-red 0.7s ease-out; }
+
+.live-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: #00FF94;
+  animation: live-pulse 1.5s ease-in-out infinite;
+}
+@keyframes live-pulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 3px #00FF94; }
+  50% { opacity: 0.4; box-shadow: 0 0 8px #00FF94; }
+}
+
+.price-value {
+  transition: color 0.15s ease;
+  font-variant-numeric: tabular-nums;
+}
+
 .stagger-1 { animation-delay: 0.1s; }
 .stagger-2 { animation-delay: 0.2s; }
 .stagger-3 { animation-delay: 0.3s; }
