@@ -33,6 +33,29 @@ JWT_SECRET = os.environ.get('JWT_SECRET', 'signalbeast-pro-jwt-secret-2026')
 JWT_ALGORITHM = 'HS256'
 EMERGENT_LLM_KEY = os.environ.get('EMERGENT_LLM_KEY')
 COINGECKO_BASE = 'https://api.coingecko.com/api/v3'
+CRYPTOCOMPARE_BASE = 'https://min-api.cryptocompare.com/data'
+
+# Top 25 crypto symbols for CryptoCompare
+CRYPTO_SYMBOLS = 'BTC,ETH,SOL,BNB,XRP,DOGE,ADA,AVAX,DOT,LINK,SHIB,LTC,ATOM,UNI,NEAR,APT,ARB,FIL,XLM,MATIC,TRX,TON,OP,INJ,SUI'
+CRYPTO_NAMES = {
+    'BTC': 'Bitcoin', 'ETH': 'Ethereum', 'SOL': 'Solana', 'BNB': 'BNB',
+    'XRP': 'XRP', 'DOGE': 'Dogecoin', 'ADA': 'Cardano', 'AVAX': 'Avalanche',
+    'DOT': 'Polkadot', 'LINK': 'Chainlink', 'SHIB': 'Shiba Inu', 'LTC': 'Litecoin',
+    'ATOM': 'Cosmos', 'UNI': 'Uniswap', 'NEAR': 'NEAR Protocol', 'APT': 'Aptos',
+    'ARB': 'Arbitrum', 'FIL': 'Filecoin', 'XLM': 'Stellar', 'MATIC': 'Polygon',
+    'TRX': 'TRON', 'TON': 'Toncoin', 'OP': 'Optimism', 'INJ': 'Injective', 'SUI': 'Sui',
+}
+# Map symbols to stable IDs (matching CoinGecko-style IDs for backwards compat)
+CRYPTO_ID_MAP = {
+    'BTC': 'bitcoin', 'ETH': 'ethereum', 'SOL': 'solana', 'BNB': 'binancecoin',
+    'XRP': 'ripple', 'DOGE': 'dogecoin', 'ADA': 'cardano', 'AVAX': 'avalanche-2',
+    'DOT': 'polkadot', 'LINK': 'chainlink', 'SHIB': 'shiba-inu', 'LTC': 'litecoin',
+    'ATOM': 'cosmos', 'UNI': 'uniswap', 'NEAR': 'near', 'APT': 'aptos',
+    'ARB': 'arbitrum', 'FIL': 'filecoin', 'XLM': 'stellar', 'MATIC': 'matic-network',
+    'TRX': 'tron', 'TON': 'toncoin', 'OP': 'optimism', 'INJ': 'injective-protocol', 'SUI': 'sui',
+}
+# Reverse map: id -> symbol
+CRYPTO_SYM_MAP = {v: k for k, v in CRYPTO_ID_MAP.items()}
 
 # Simple in-memory cache
 _cache: Dict[str, Dict] = {}
@@ -405,24 +428,47 @@ async def get_crypto_price(coin_id: str):
 
 @api_router.get("/market/crypto/{coin_id}/chart")
 async def get_crypto_chart(coin_id: str, days: int = 7):
-    url = f"{COINGECKO_BASE}/coins/{coin_id}/market_chart?vs_currency=usd&days={days}"
-    data = await cached_get(url, ttl=300)
-    return data
+    """Get crypto price chart data via CryptoCompare"""
+    crypto_sym = CRYPTO_SYM_MAP.get(coin_id, coin_id.upper())
+    endpoint = "histohour" if days <= 7 else "histoday"
+    limit = days * 24 if days <= 7 else days
+    try:
+        async with httpx.AsyncClient(timeout=15) as client:
+            resp = await client.get(f"{CRYPTOCOMPARE_BASE}/v2/{endpoint}", params={"fsym": crypto_sym, "tsym": "USD", "limit": limit})
+            resp.raise_for_status()
+            data = resp.json()
+        prices = [[c['time'] * 1000, c['close']] for c in data.get('Data', {}).get('Data', []) if c.get('close', 0) > 0]
+        return {"prices": prices}
+    except Exception:
+        return {"prices": []}
 
 @api_router.get("/market/chart/{asset_type}/{asset_id}")
 async def get_asset_chart(asset_type: str, asset_id: str, period: str = "1mo"):
     """Get OHLCV chart data for any asset"""
     if asset_type == "crypto":
-        days_map = {"1d": 1, "7d": 7, "1mo": 30, "3mo": 90, "1y": 365}
-        days = days_map.get(period, 30)
-        url = f"{COINGECKO_BASE}/coins/{asset_id}/ohlc?vs_currency=usd&days={days}"
+        # Map ID back to symbol for CryptoCompare
+        crypto_sym = CRYPTO_SYM_MAP.get(asset_id, asset_id.upper())
+        period_map = {"1d": ("histohour", 24), "7d": ("histohour", 168), "1mo": ("histoday", 30), "3mo": ("histoday", 90), "1y": ("histoday", 365)}
+        endpoint, limit = period_map.get(period, ("histoday", 30))
         try:
-            raw = await cached_get(url, ttl=300)
+            async with httpx.AsyncClient(timeout=15) as client:
+                resp = await client.get(f"{CRYPTOCOMPARE_BASE}/v2/{endpoint}", params={"fsym": crypto_sym, "tsym": "USD", "limit": limit})
+                resp.raise_for_status()
+                data = resp.json()
             candles = []
-            for c in raw:
-                candles.append({"time": int(c[0] / 1000), "open": c[1], "high": c[2], "low": c[3], "close": c[4]})
+            for c in data.get('Data', {}).get('Data', []):
+                if c.get('close', 0) > 0:
+                    candles.append({
+                        "time": c['time'],
+                        "open": round(c['open'], 2),
+                        "high": round(c['high'], 2),
+                        "low": round(c['low'], 2),
+                        "close": round(c['close'], 2),
+                        "volume": round(c.get('volumeto', 0)),
+                    })
             return {"candles": candles, "asset_id": asset_id, "period": period}
-        except Exception:
+        except Exception as e:
+            logger.error(f"Crypto chart error: {e}")
             return {"candles": [], "asset_id": asset_id, "period": period}
     else:
         # Forex or Indian - use yfinance
@@ -541,31 +587,54 @@ _live = {
 }
 
 async def _load_crypto():
+    """Fetch real-time crypto prices from CryptoCompare (free, fast, reliable)"""
     for attempt in range(3):
         try:
-            url = f"{COINGECKO_BASE}/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=25&page=1&sparkline=false&price_change_percentage=24h"
-            data = await cached_get(url, ttl=150)
+            async with httpx.AsyncClient(timeout=15) as client:
+                resp = await client.get(
+                    f"{CRYPTOCOMPARE_BASE}/pricemultifull",
+                    params={"fsyms": CRYPTO_SYMBOLS, "tsyms": "USD"}
+                )
+                resp.raise_for_status()
+                data = resp.json()
+
+            raw = data.get('RAW', {})
+            if not raw:
+                raise ValueError("Empty response from CryptoCompare")
+
             prices = []
-            for c in data:
-                p = float(c.get('current_price', 0) or 0)
+            for sym, sym_data in raw.items():
+                usd = sym_data.get('USD', {})
+                p = float(usd.get('PRICE', 0))
                 if p > 0:
+                    img_path = usd.get('IMAGEURL', '')
                     prices.append({
-                        'id': c['id'], 'symbol': (c.get('symbol', '') or '').upper(),
-                        'name': c.get('name', ''), 'price': p, 'base_price': p,
-                        'change_24h': float(c.get('price_change_percentage_24h', 0) or 0),
-                        'market_cap': c.get('market_cap', 0), 'volume': c.get('total_volume', 0),
-                        'image': c.get('image', ''), 'market': 'crypto',
+                        'id': CRYPTO_ID_MAP.get(sym, sym.lower()),
+                        'symbol': sym,
+                        'name': CRYPTO_NAMES.get(sym, sym),
+                        'price': round(p, 2 if p >= 1 else 6),
+                        'base_price': round(p, 2 if p >= 1 else 6),
+                        'change_24h': round(float(usd.get('CHANGEPCT24HOUR', 0)), 2),
+                        'market_cap': int(float(usd.get('MKTCAP', 0))),
+                        'volume': int(float(usd.get('TOTALVOLUME24HTO', 0))),
+                        'high': round(float(usd.get('HIGH24HOUR', 0)), 2 if p >= 1 else 6),
+                        'low': round(float(usd.get('LOW24HOUR', 0)), 2 if p >= 1 else 6),
+                        'image': f"https://cryptocompare.com{img_path}" if img_path else '',
+                        'market': 'crypto',
                     })
+
+            # Sort by market cap descending
+            prices.sort(key=lambda x: x['market_cap'], reverse=True)
+
             if prices:
                 _live['crypto'] = prices
                 _live['last_crypto_fetch'] = time.time()
-                logger.info(f"Loaded {len(prices)} crypto prices")
+                logger.info(f"Loaded {len(prices)} crypto prices from CryptoCompare")
                 return
         except Exception as e:
-            logger.error(f"Crypto load failed: {e}")
+            logger.error(f"Crypto load failed (attempt {attempt+1}): {e}")
             if attempt < 2:
-                await asyncio.sleep(5 * (attempt + 1))
-    # All retries failed - set fetch time to prevent constant retrying
+                await asyncio.sleep(3 * (attempt + 1))
     _live['last_crypto_fetch'] = time.time()
 
 async def _load_forex():
@@ -654,7 +723,7 @@ async def price_ticker_loop():
     while True:
         try:
             now = time.time()
-            if now - _live['last_crypto_fetch'] > 180:
+            if now - _live['last_crypto_fetch'] > 30:
                 asyncio.create_task(_load_crypto())
             # Only refetch forex/indian if market is open or we have no data
             if (now - _live['last_forex_fetch'] > 300) and (is_forex_market_open() or not _live['forex']):
@@ -696,13 +765,24 @@ async def generate_signal(data: SignalRequest, user: dict = Depends(get_current_
         raise HTTPException(status_code=500, detail="AI service not configured")
     market_context = ""
     if data.asset_type == "crypto":
-        try:
-            url = f"{COINGECKO_BASE}/simple/price?ids={data.asset_id}&vs_currencies=usd&include_24hr_change=true&include_market_cap=true"
-            price_data = await cached_get(url, ttl=30)
-            cd = price_data.get(data.asset_id, {})
-            market_context = f"Current Price: ${cd.get('usd', 'N/A')}, 24h Change: {cd.get('usd_24h_change', 'N/A')}%, Market Cap: ${cd.get('usd_market_cap', 'N/A')}"
-        except Exception:
+        # Get price from live cache (CryptoCompare-powered)
+        live_item = next((c for c in _live['crypto'] if c['id'] == data.asset_id), None)
+        if live_item:
+            market_context = f"Current Price: ${live_item['price']:,.2f}, 24h Change: {live_item['change_24h']:.2f}%, Market Cap: ${live_item.get('market_cap', 0):,.0f}, High: ${live_item.get('high', 0):,.2f}, Low: ${live_item.get('low', 0):,.2f}"
+        else:
             market_context = f"Asset: {data.asset_name}"
+    elif data.asset_type == "forex":
+        live_item = next((f for f in _live['forex'] if f['id'] == data.asset_id), None)
+        if live_item:
+            market_context = f"Current Price: {live_item['price']}, 24h Change: {live_item['change_24h']:.2f}%, High: {live_item.get('high', 0)}, Low: {live_item.get('low', 0)}"
+        else:
+            market_context = f"Asset: {data.asset_name}, Type: forex"
+    elif data.asset_type == "indian":
+        live_item = next((i for i in _live['indian'] if i['id'] == data.asset_id), None)
+        if live_item:
+            market_context = f"Current Price: {live_item['price']}, 24h Change: {live_item['change_24h']:.2f}%, High: {live_item.get('high', 0)}, Low: {live_item.get('low', 0)}"
+        else:
+            market_context = f"Asset: {data.asset_name}, Type: indian"
     else:
         market_context = f"Asset: {data.asset_name}, Type: {data.asset_type}"
 
