@@ -1,34 +1,77 @@
-.App-logo {
-    height: 40vmin;
-    pointer-events: none;
+/* SignalBeast Pro - Global Component Styles */
+
+.hero-gradient {
+  background: radial-gradient(circle at 50% 0%, rgba(99, 102, 241, 0.15) 0%, rgba(5, 5, 5, 0) 70%);
 }
 
-@media (prefers-reduced-motion: no-preference) {
-    .App-logo {
-        animation: App-logo-spin infinite 20s linear;
-    }
+.card-hover {
+  transition: border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease;
+}
+.card-hover:hover {
+  border-color: rgba(99, 102, 241, 0.3);
+  box-shadow: 0 8px 32px rgba(99, 102, 241, 0.1);
+  transform: translateY(-2px);
 }
 
-.App-header {
-    background-color: #0f0f10;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    font-size: calc(10px + 2vmin);
-    color: white;
+.sidebar-item {
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+.sidebar-item:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+.sidebar-item.active {
+  background-color: rgba(99, 102, 241, 0.15);
+  color: #6366F1;
+  border-right: 2px solid #6366F1;
 }
 
-.App-link {
-    color: #61dafb;
+.ticker-tape {
+  display: flex;
+  gap: 2rem;
+  animation: ticker-scroll 30s linear infinite;
+}
+@keyframes ticker-scroll {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
 }
 
-@keyframes App-logo-spin {
-    from {
-        transform: rotate(0deg);
-    }
-    to {
-        transform: rotate(360deg);
-    }
+.confidence-ring {
+  transition: stroke-dashoffset 0.8s ease;
 }
+
+.chat-bubble-user {
+  background: linear-gradient(135deg, #6366F1 0%, #4F46E5 100%);
+  border-radius: 16px 16px 4px 16px;
+}
+.chat-bubble-ai {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px 16px 16px 4px;
+}
+
+.signal-card-buy {
+  border-left: 3px solid #00FF94;
+}
+.signal-card-sell {
+  border-left: 3px solid #FF2E2E;
+}
+
+.market-row {
+  transition: background-color 0.15s ease;
+}
+.market-row:hover {
+  background-color: rgba(255, 255, 255, 0.03);
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+.float-animation {
+  animation: float 3s ease-in-out infinite;
+}
+
+.stagger-1 { animation-delay: 0.1s; }
+.stagger-2 { animation-delay: 0.2s; }
+.stagger-3 { animation-delay: 0.3s; }
+.stagger-4 { animation-delay: 0.4s; }
