@@ -375,8 +375,11 @@ async def generate_signal(data: SignalRequest, user: dict = Depends(get_current_
         signal_doc.pop('_id', None)
         return signal_doc
     except Exception as e:
-        logger.error(f"Signal generation failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to generate signal: {str(e)}")
+        error_msg = str(e)
+        logger.error(f"Signal generation failed: {error_msg}")
+        if "budget" in error_msg.lower() or "exceeded" in error_msg.lower():
+            raise HTTPException(status_code=429, detail="AI service budget exceeded. Please go to Profile > Universal Key > Add Balance to top up, or try again later.")
+        raise HTTPException(status_code=500, detail=f"Failed to generate signal: {error_msg}")
 
 # ==================== PORTFOLIO ====================
 
@@ -491,8 +494,17 @@ Always include: "This is not financial advice. Always do your own research."
         })
         return {"response": response_text, "session_id": session_id}
     except Exception as e:
-        logger.error(f"Chat error: {e}")
-        raise HTTPException(status_code=500, detail=f"AI service error: {str(e)}")
+        error_msg = str(e)
+        logger.error(f"Chat error: {error_msg}")
+        if "budget" in error_msg.lower() or "exceeded" in error_msg.lower():
+            fallback = "I'm currently experiencing high demand. The AI service budget has been temporarily exceeded. Please try again in a moment, or go to Profile > Universal Key > Add Balance to top up. In the meantime, feel free to explore our market data, signals, and portfolio features!"
+            await db.chat_history.insert_one({
+                "session_id": session_id, "user_id": user['user_id'],
+                "role": "assistant", "content": fallback,
+                "created_at": datetime.now(timezone.utc).isoformat()
+            })
+            return {"response": fallback, "session_id": session_id}
+        raise HTTPException(status_code=500, detail=f"AI service error: {error_msg}")
 
 @api_router.get("/chat/history")
 async def get_chat_history(session_id: str, user: dict = Depends(get_current_user)):
