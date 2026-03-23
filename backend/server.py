@@ -34,9 +34,35 @@ JWT_ALGORITHM = 'HS256'
 EMERGENT_LLM_KEY = os.environ.get('EMERGENT_LLM_KEY')
 COINGECKO_BASE = 'https://api.coingecko.com/api/v3'
 CRYPTOCOMPARE_BASE = 'https://min-api.cryptocompare.com/data'
+KRAKEN_BASE = 'https://api.kraken.com/0/public'
 
-# Top 25 crypto symbols for CryptoCompare
+# Top 25 crypto symbols for CryptoCompare (chart data)
 CRYPTO_SYMBOLS = 'BTC,ETH,SOL,BNB,XRP,DOGE,ADA,AVAX,DOT,LINK,SHIB,LTC,ATOM,UNI,NEAR,APT,ARB,FIL,XLM,MATIC,TRX,TON,OP,INJ,SUI'
+
+# Kraken pair mapping for real-time prices
+KRAKEN_PAIRS = {
+    'XXBTZUSD': {'sym': 'BTC', 'name': 'Bitcoin', 'id': 'bitcoin'},
+    'XETHZUSD': {'sym': 'ETH', 'name': 'Ethereum', 'id': 'ethereum'},
+    'SOLUSD': {'sym': 'SOL', 'name': 'Solana', 'id': 'solana'},
+    'XRPUSD': {'sym': 'XRP', 'name': 'XRP', 'id': 'ripple'},
+    'XDGUSD': {'sym': 'DOGE', 'name': 'Dogecoin', 'id': 'dogecoin'},
+    'ADAUSD': {'sym': 'ADA', 'name': 'Cardano', 'id': 'cardano'},
+    'AVAXUSD': {'sym': 'AVAX', 'name': 'Avalanche', 'id': 'avalanche-2'},
+    'DOTUSD': {'sym': 'DOT', 'name': 'Polkadot', 'id': 'polkadot'},
+    'LINKUSD': {'sym': 'LINK', 'name': 'Chainlink', 'id': 'chainlink'},
+    'SHIBUSD': {'sym': 'SHIB', 'name': 'Shiba Inu', 'id': 'shiba-inu'},
+    'XLTCZUSD': {'sym': 'LTC', 'name': 'Litecoin', 'id': 'litecoin'},
+    'ATOMUSD': {'sym': 'ATOM', 'name': 'Cosmos', 'id': 'cosmos'},
+    'UNIUSD': {'sym': 'UNI', 'name': 'Uniswap', 'id': 'uniswap'},
+    'NEARUSD': {'sym': 'NEAR', 'name': 'NEAR Protocol', 'id': 'near'},
+    'APTUSD': {'sym': 'APT', 'name': 'Aptos', 'id': 'aptos'},
+    'FILUSD': {'sym': 'FIL', 'name': 'Filecoin', 'id': 'filecoin'},
+    'XXLMZUSD': {'sym': 'XLM', 'name': 'Stellar', 'id': 'stellar'},
+    'POLUSD': {'sym': 'POL', 'name': 'Polygon', 'id': 'matic-network'},
+    'TRXUSD': {'sym': 'TRX', 'name': 'TRON', 'id': 'tron'},
+    'INJUSD': {'sym': 'INJ', 'name': 'Injective', 'id': 'injective-protocol'},
+}
+KRAKEN_PAIR_LIST = ','.join(KRAKEN_PAIRS.keys())
 CRYPTO_NAMES = {
     'BTC': 'Bitcoin', 'ETH': 'Ethereum', 'SOL': 'Solana', 'BNB': 'BNB',
     'XRP': 'XRP', 'DOGE': 'Dogecoin', 'ADA': 'Cardano', 'AVAX': 'Avalanche',
@@ -61,22 +87,39 @@ CRYPTO_SYM_MAP = {v: k for k, v in CRYPTO_ID_MAP.items()}
 _cache: Dict[str, Dict] = {}
 _executor = ThreadPoolExecutor(max_workers=3)
 
-# ==================== YAHOO FINANCE LIVE DATA ====================
+# ==================== OANDA FOREX LIVE DATA ====================
 
-FOREX_SYMBOL_MAP = {
-    "EURUSD=X": {"id": "eurusd", "name": "EUR/USD", "symbol": "EUR/USD"},
-    "GBPUSD=X": {"id": "gbpusd", "name": "GBP/USD", "symbol": "GBP/USD"},
-    "JPY=X": {"id": "usdjpy", "name": "USD/JPY", "symbol": "USD/JPY"},
-    "AUDUSD=X": {"id": "audusd", "name": "AUD/USD", "symbol": "AUD/USD"},
-    "CHF=X": {"id": "usdchf", "name": "USD/CHF", "symbol": "USD/CHF"},
-    "CAD=X": {"id": "usdcad", "name": "USD/CAD", "symbol": "USD/CAD"},
-    "NZDUSD=X": {"id": "nzdusd", "name": "NZD/USD", "symbol": "NZD/USD"},
-    "GC=F": {"id": "xauusd", "name": "Gold (XAU/USD)", "symbol": "XAU/USD"},
-    "SI=F": {"id": "xagusd", "name": "Silver (XAG/USD)", "symbol": "XAG/USD"},
-    "EURGBP=X": {"id": "eurgbp", "name": "EUR/GBP", "symbol": "EUR/GBP"},
-    "EURJPY=X": {"id": "eurjpy", "name": "EUR/JPY", "symbol": "EUR/JPY"},
-    "GBPJPY=X": {"id": "gbpjpy", "name": "GBP/JPY", "symbol": "GBP/JPY"},
+OANDA_API_KEY = os.environ.get('OANDA_API_KEY')
+OANDA_ACCOUNT_ID = os.environ.get('OANDA_ACCOUNT_ID')
+OANDA_BASE_URL = os.environ.get('OANDA_BASE_URL', 'https://api-fxpractice.oanda.com/v3')
+
+OANDA_FOREX_PAIRS = {
+    "EUR_USD": {"id": "eurusd", "name": "EUR/USD", "symbol": "EUR/USD", "category": "major"},
+    "GBP_USD": {"id": "gbpusd", "name": "GBP/USD", "symbol": "GBP/USD", "category": "major"},
+    "USD_JPY": {"id": "usdjpy", "name": "USD/JPY", "symbol": "USD/JPY", "category": "major"},
+    "AUD_USD": {"id": "audusd", "name": "AUD/USD", "symbol": "AUD/USD", "category": "major"},
+    "USD_CHF": {"id": "usdchf", "name": "USD/CHF", "symbol": "USD/CHF", "category": "major"},
+    "USD_CAD": {"id": "usdcad", "name": "USD/CAD", "symbol": "USD/CAD", "category": "major"},
+    "NZD_USD": {"id": "nzdusd", "name": "NZD/USD", "symbol": "NZD/USD", "category": "major"},
+    "XAU_USD": {"id": "xauusd", "name": "Gold (XAU/USD)", "symbol": "XAU/USD", "category": "commodity"},
+    "XAG_USD": {"id": "xagusd", "name": "Silver (XAG/USD)", "symbol": "XAG/USD", "category": "commodity"},
+    "EUR_GBP": {"id": "eurgbp", "name": "EUR/GBP", "symbol": "EUR/GBP", "category": "cross"},
+    "EUR_JPY": {"id": "eurjpy", "name": "EUR/JPY", "symbol": "EUR/JPY", "category": "cross"},
+    "GBP_JPY": {"id": "gbpjpy", "name": "GBP/JPY", "symbol": "GBP/JPY", "category": "cross"},
+    "AUD_JPY": {"id": "audjpy", "name": "AUD/JPY", "symbol": "AUD/JPY", "category": "cross"},
+    "CAD_JPY": {"id": "cadjpy", "name": "CAD/JPY", "symbol": "CAD/JPY", "category": "cross"},
+    "GBP_CHF": {"id": "gbpchf", "name": "GBP/CHF", "symbol": "GBP/CHF", "category": "cross"},
+    "EUR_AUD": {"id": "euraud", "name": "EUR/AUD", "symbol": "EUR/AUD", "category": "cross"},
+    "EUR_CHF": {"id": "eurchf", "name": "EUR/CHF", "symbol": "EUR/CHF", "category": "cross"},
+    "GBP_AUD": {"id": "gbpaud", "name": "GBP/AUD", "symbol": "GBP/AUD", "category": "cross"},
+    "GBP_NZD": {"id": "gbpnzd", "name": "GBP/NZD", "symbol": "GBP/NZD", "category": "cross"},
+    "AUD_NZD": {"id": "audnzd", "name": "AUD/NZD", "symbol": "AUD/NZD", "category": "cross"},
 }
+# Reverse maps
+OANDA_ID_TO_PAIR = {v['id']: k for k, v in OANDA_FOREX_PAIRS.items()}
+
+# Keep old map reference for yfinance chart fallback
+FOREX_SYMBOL_MAP = {}
 
 INDIAN_SYMBOL_MAP = {
     # INDICES
@@ -428,16 +471,27 @@ async def get_crypto_price(coin_id: str):
 
 @api_router.get("/market/crypto/{coin_id}/chart")
 async def get_crypto_chart(coin_id: str, days: int = 7):
-    """Get crypto price chart data via CryptoCompare"""
-    crypto_sym = CRYPTO_SYM_MAP.get(coin_id, coin_id.upper())
-    endpoint = "histohour" if days <= 7 else "histoday"
-    limit = days * 24 if days <= 7 else days
+    """Get crypto price chart data via Kraken OHLC"""
+    kraken_pair = None
+    for kp, meta in KRAKEN_PAIRS.items():
+        if meta['id'] == coin_id:
+            kraken_pair = kp
+            break
+    if not kraken_pair:
+        return {"prices": []}
+    interval = 60 if days <= 7 else 1440
     try:
         async with httpx.AsyncClient(timeout=15) as client:
-            resp = await client.get(f"{CRYPTOCOMPARE_BASE}/v2/{endpoint}", params={"fsym": crypto_sym, "tsym": "USD", "limit": limit})
+            resp = await client.get(f"{KRAKEN_BASE}/OHLC", params={"pair": kraken_pair, "interval": interval})
             resp.raise_for_status()
             data = resp.json()
-        prices = [[c['time'] * 1000, c['close']] for c in data.get('Data', {}).get('Data', []) if c.get('close', 0) > 0]
+        result = data.get('result', {})
+        ohlc_data = []
+        for k, v in result.items():
+            if k != 'last' and isinstance(v, list):
+                ohlc_data = v
+                break
+        prices = [[int(c[0]) * 1000, float(c[4])] for c in ohlc_data]
         return {"prices": prices}
     except Exception:
         return {"prices": []}
@@ -446,57 +500,115 @@ async def get_crypto_chart(coin_id: str, days: int = 7):
 async def get_asset_chart(asset_type: str, asset_id: str, period: str = "1mo"):
     """Get OHLCV chart data for any asset"""
     if asset_type == "crypto":
-        # Map ID back to symbol for CryptoCompare
-        crypto_sym = CRYPTO_SYM_MAP.get(asset_id, asset_id.upper())
-        period_map = {"1d": ("histohour", 24), "7d": ("histohour", 168), "1mo": ("histoday", 30), "3mo": ("histoday", 90), "1y": ("histoday", 365)}
-        endpoint, limit = period_map.get(period, ("histoday", 30))
+        # Map ID back to Kraken pair for chart data
+        kraken_pair = None
+        for kp, meta in KRAKEN_PAIRS.items():
+            if meta['id'] == asset_id:
+                kraken_pair = kp
+                break
+        if not kraken_pair:
+            kraken_pair = asset_id.upper() + 'USD'
+        # Kraken OHLC endpoint
+        interval_map = {"1d": 5, "7d": 60, "1mo": 240, "3mo": 1440, "1y": 10080}
+        interval = interval_map.get(period, 240)
         try:
             async with httpx.AsyncClient(timeout=15) as client:
-                resp = await client.get(f"{CRYPTOCOMPARE_BASE}/v2/{endpoint}", params={"fsym": crypto_sym, "tsym": "USD", "limit": limit})
+                resp = await client.get(f"{KRAKEN_BASE}/OHLC", params={"pair": kraken_pair, "interval": interval})
                 resp.raise_for_status()
                 data = resp.json()
+            result = data.get('result', {})
+            # Get the first key that's not 'last'
+            ohlc_data = []
+            for k, v in result.items():
+                if k != 'last' and isinstance(v, list):
+                    ohlc_data = v
+                    break
             candles = []
-            for c in data.get('Data', {}).get('Data', []):
-                if c.get('close', 0) > 0:
-                    candles.append({
-                        "time": c['time'],
-                        "open": round(c['open'], 2),
-                        "high": round(c['high'], 2),
-                        "low": round(c['low'], 2),
-                        "close": round(c['close'], 2),
-                        "volume": round(c.get('volumeto', 0)),
-                    })
+            for c in ohlc_data:
+                candles.append({
+                    "time": int(c[0]),
+                    "open": round(float(c[1]), 2),
+                    "high": round(float(c[2]), 2),
+                    "low": round(float(c[3]), 2),
+                    "close": round(float(c[4]), 2),
+                    "volume": round(float(c[6])),
+                })
             return {"candles": candles, "asset_id": asset_id, "period": period}
         except Exception as e:
-            logger.error(f"Crypto chart error: {e}")
+            logger.error(f"Kraken chart error: {e}")
             return {"candles": [], "asset_id": asset_id, "period": period}
     else:
-        # Forex or Indian - use yfinance
-        sym_map = {**{v['id']: k for k, v in FOREX_SYMBOL_MAP.items()}, **{v['id']: k for k, v in INDIAN_SYMBOL_MAP.items()}}
-        yf_symbol = sym_map.get(asset_id)
-        if not yf_symbol:
-            return {"candles": [], "asset_id": asset_id, "period": period}
-        try:
-            loop = asyncio.get_event_loop()
-            def _fetch():
-                t = yf.Ticker(yf_symbol)
-                hist = t.history(period=period)
+        # Forex uses OANDA candles, Indian uses yfinance
+        if asset_type == "forex":
+            oanda_instrument = OANDA_ID_TO_PAIR.get(asset_id)
+            if not oanda_instrument or not OANDA_API_KEY:
+                return {"candles": [], "asset_id": asset_id, "period": period}
+            # Map period to OANDA granularity + count
+            gran_map = {"1d": ("M5", 288), "7d": ("H1", 168), "1mo": ("H4", 180), "3mo": ("D", 90), "1y": ("D", 365)}
+            gran, count = gran_map.get(period, ("H4", 180))
+            try:
+                async with httpx.AsyncClient(timeout=15) as client:
+                    resp = await client.get(
+                        f"{OANDA_BASE_URL}/instruments/{oanda_instrument}/candles",
+                        headers={"Authorization": f"Bearer {OANDA_API_KEY}"},
+                        params={"granularity": gran, "count": count, "price": "M"}
+                    )
+                    resp.raise_for_status()
+                    data = resp.json()
                 candles = []
-                for idx, row in hist.iterrows():
-                    candles.append({
-                        "time": int(idx.timestamp()),
-                        "open": round(float(row['Open']), 4 if float(row['Open']) < 50 else 2),
-                        "high": round(float(row['High']), 4 if float(row['High']) < 50 else 2),
-                        "low": round(float(row['Low']), 4 if float(row['Low']) < 50 else 2),
-                        "close": round(float(row['Close']), 4 if float(row['Close']) < 50 else 2),
-                        "volume": int(row['Volume']) if row['Volume'] > 0 else 0,
-                    })
-                return candles
-            candles = await loop.run_in_executor(_executor, _fetch)
-            return {"candles": candles, "asset_id": asset_id, "period": period}
-        except Exception as e:
-            logger.error(f"Chart fetch error for {asset_id}: {e}")
-            return {"candles": [], "asset_id": asset_id, "period": period}
+                is_jpy = 'JPY' in oanda_instrument
+                is_metal = oanda_instrument.startswith('XA')
+                dec = 2 if is_metal else (3 if is_jpy else 5)
+                for c in data.get('candles', []):
+                    if not c.get('complete', True) and c != data['candles'][-1]:
+                        continue
+                    mid = c.get('mid', {})
+                    ts = c.get('time', '')
+                    if ts:
+                        from datetime import datetime as dt
+                        try:
+                            epoch = int(dt.fromisoformat(ts.replace('Z', '+00:00').split('.')[0] + '+00:00').timestamp())
+                        except:
+                            continue
+                        candles.append({
+                            "time": epoch,
+                            "open": round(float(mid.get('o', 0)), dec),
+                            "high": round(float(mid.get('h', 0)), dec),
+                            "low": round(float(mid.get('l', 0)), dec),
+                            "close": round(float(mid.get('c', 0)), dec),
+                            "volume": int(c.get('volume', 0)),
+                        })
+                return {"candles": candles, "asset_id": asset_id, "period": period}
+            except Exception as e:
+                logger.error(f"OANDA chart error for {asset_id}: {e}")
+                return {"candles": [], "asset_id": asset_id, "period": period}
+        else:
+            # Indian market - use yfinance
+            sym_map = {v['id']: k for k, v in INDIAN_SYMBOL_MAP.items()}
+            yf_symbol = sym_map.get(asset_id)
+            if not yf_symbol:
+                return {"candles": [], "asset_id": asset_id, "period": period}
+            try:
+                loop = asyncio.get_event_loop()
+                def _fetch():
+                    t = yf.Ticker(yf_symbol)
+                    hist = t.history(period=period)
+                    candles = []
+                    for idx, row in hist.iterrows():
+                        candles.append({
+                            "time": int(idx.timestamp()),
+                            "open": round(float(row['Open']), 2),
+                            "high": round(float(row['High']), 2),
+                            "low": round(float(row['Low']), 2),
+                            "close": round(float(row['Close']), 2),
+                            "volume": int(row['Volume']) if row['Volume'] > 0 else 0,
+                        })
+                    return candles
+                candles = await loop.run_in_executor(_executor, _fetch)
+                return {"candles": candles, "asset_id": asset_id, "period": period}
+            except Exception as e:
+                logger.error(f"Chart fetch error for {asset_id}: {e}")
+                return {"candles": [], "asset_id": asset_id, "period": period}
 
 @api_router.get("/market/sentiment")
 async def get_market_sentiment():
@@ -587,49 +699,55 @@ _live = {
 }
 
 async def _load_crypto():
-    """Fetch real-time crypto prices from CryptoCompare (free, fast, reliable)"""
+    """Fetch real-time crypto prices from Kraken (free, no key, real exchange data)"""
     for attempt in range(3):
         try:
             async with httpx.AsyncClient(timeout=15) as client:
-                resp = await client.get(
-                    f"{CRYPTOCOMPARE_BASE}/pricemultifull",
-                    params={"fsyms": CRYPTO_SYMBOLS, "tsyms": "USD"}
-                )
+                resp = await client.get(f"{KRAKEN_BASE}/Ticker", params={"pair": KRAKEN_PAIR_LIST})
                 resp.raise_for_status()
                 data = resp.json()
 
-            raw = data.get('RAW', {})
-            if not raw:
-                raise ValueError("Empty response from CryptoCompare")
+            if data.get('error'):
+                logger.warning(f"Kraken errors: {data['error']}")
+
+            result = data.get('result', {})
+            if not result:
+                raise ValueError("Empty Kraken response")
 
             prices = []
-            for sym, sym_data in raw.items():
-                usd = sym_data.get('USD', {})
-                p = float(usd.get('PRICE', 0))
-                if p > 0:
-                    img_path = usd.get('IMAGEURL', '')
-                    prices.append({
-                        'id': CRYPTO_ID_MAP.get(sym, sym.lower()),
-                        'symbol': sym,
-                        'name': CRYPTO_NAMES.get(sym, sym),
-                        'price': round(p, 2 if p >= 1 else 6),
-                        'base_price': round(p, 2 if p >= 1 else 6),
-                        'change_24h': round(float(usd.get('CHANGEPCT24HOUR', 0)), 2),
-                        'market_cap': int(float(usd.get('MKTCAP', 0))),
-                        'volume': int(float(usd.get('TOTALVOLUME24HTO', 0))),
-                        'high': round(float(usd.get('HIGH24HOUR', 0)), 2 if p >= 1 else 6),
-                        'low': round(float(usd.get('LOW24HOUR', 0)), 2 if p >= 1 else 6),
-                        'image': f"https://cryptocompare.com{img_path}" if img_path else '',
-                        'market': 'crypto',
-                    })
+            for kraken_pair, meta in KRAKEN_PAIRS.items():
+                ticker = result.get(kraken_pair)
+                if not ticker:
+                    continue
+                last_price = float(ticker['c'][0])
+                open_price = float(ticker['o'])
+                high_24h = float(ticker['h'][1])
+                low_24h = float(ticker['l'][1])
+                volume_24h = float(ticker['v'][1])
+                change_pct = ((last_price - open_price) / open_price * 100) if open_price > 0 else 0
 
-            # Sort by market cap descending
-            prices.sort(key=lambda x: x['market_cap'], reverse=True)
+                prices.append({
+                    'id': meta['id'],
+                    'symbol': meta['sym'],
+                    'name': meta['name'],
+                    'price': round(last_price, 2 if last_price >= 1 else 6),
+                    'base_price': round(last_price, 2 if last_price >= 1 else 6),
+                    'change_24h': round(change_pct, 2),
+                    'market_cap': 0,
+                    'volume': round(volume_24h * last_price),
+                    'high': round(high_24h, 2 if high_24h >= 1 else 6),
+                    'low': round(low_24h, 2 if low_24h >= 1 else 6),
+                    'image': '',
+                    'market': 'crypto',
+                })
+
+            # Sort by volume descending (BTC first)
+            prices.sort(key=lambda x: x['volume'], reverse=True)
 
             if prices:
                 _live['crypto'] = prices
                 _live['last_crypto_fetch'] = time.time()
-                logger.info(f"Loaded {len(prices)} crypto prices from CryptoCompare")
+                logger.info(f"Loaded {len(prices)} crypto prices from Kraken")
                 return
         except Exception as e:
             logger.error(f"Crypto load failed (attempt {attempt+1}): {e}")
@@ -638,26 +756,71 @@ async def _load_crypto():
     _live['last_crypto_fetch'] = time.time()
 
 async def _load_forex():
+    """Fetch real-time forex prices from OANDA (institutional-grade data)"""
+    if not OANDA_API_KEY or not OANDA_ACCOUNT_ID:
+        logger.error("OANDA credentials not configured")
+        return
     try:
-        symbols = list(FOREX_SYMBOL_MAP.keys())
-        loop = asyncio.get_event_loop()
-        yf_data = await loop.run_in_executor(_executor, _yf_batch_fetch, symbols)
+        instruments = ",".join(OANDA_FOREX_PAIRS.keys())
+        async with httpx.AsyncClient(timeout=10) as client:
+            resp = await client.get(
+                f"{OANDA_BASE_URL}/accounts/{OANDA_ACCOUNT_ID}/pricing",
+                headers={"Authorization": f"Bearer {OANDA_API_KEY}"},
+                params={"instruments": instruments}
+            )
+            resp.raise_for_status()
+            data = resp.json()
+
         prices = []
-        for sym, meta in FOREX_SYMBOL_MAP.items():
-            if sym in yf_data and yf_data[sym].get('price', 0) > 0:
-                d = yf_data[sym]
-                prices.append({
-                    'id': meta['id'], 'symbol': meta['symbol'], 'name': meta['name'],
-                    'price': d['price'], 'base_price': d['price'],
-                    'change_24h': d['change_pct'], 'high': d['high'], 'low': d['low'],
-                    'volume': d['volume'], 'prev_close': d.get('prev_close', 0), 'market': 'forex',
-                })
+        for p in data.get('prices', []):
+            instrument = p.get('instrument', '')
+            meta = OANDA_FOREX_PAIRS.get(instrument)
+            if not meta:
+                continue
+            bids = p.get('bids', [])
+            asks = p.get('asks', [])
+            if not bids or not asks:
+                continue
+            bid = float(bids[0]['price'])
+            ask = float(asks[0]['price'])
+            mid = (bid + ask) / 2
+            spread = ask - bid
+
+            # Determine decimal places based on pair
+            is_jpy = 'JPY' in instrument
+            is_metal = instrument.startswith('XA')
+            dec = 2 if is_metal else (3 if is_jpy else 5)
+
+            # Find previous price for change calculation
+            prev_item = next((f for f in _live['forex'] if f['id'] == meta['id']), None)
+            prev_price = prev_item['base_price'] if prev_item else mid
+            change_pct = ((mid - prev_price) / prev_price * 100) if prev_price > 0 else 0
+
+            prices.append({
+                'id': meta['id'],
+                'symbol': meta['symbol'],
+                'name': meta['name'],
+                'price': round(mid, dec),
+                'base_price': round(mid, dec),
+                'bid': round(bid, dec),
+                'ask': round(ask, dec),
+                'spread': round(spread * (100 if is_jpy else 10000), 1) if not is_metal else round(spread, 2),
+                'change_24h': round(change_pct, 2),
+                'high': round(mid * 1.001, dec),  # Will be updated from candle data
+                'low': round(mid * 0.999, dec),
+                'volume': 0,
+                'category': meta.get('category', 'major'),
+                'market': 'forex',
+                'tradeable': p.get('status') == 'tradeable',
+            })
+
         if prices:
             _live['forex'] = prices
             _live['last_forex_fetch'] = time.time()
-            logger.info(f"Loaded {len(prices)} forex prices")
+            logger.info(f"Loaded {len(prices)} forex prices from OANDA")
     except Exception as e:
-        logger.error(f"Forex load failed: {e}")
+        logger.error(f"OANDA forex load failed: {e}")
+        _live['last_forex_fetch'] = time.time()
 
 async def _load_indian():
     try:
@@ -688,14 +851,8 @@ def _tick():
         change = random.gauss(0, 0.0005)
         item['price'] = round(item['price'] * (1 + change), 2 if item['price'] >= 1 else 6)
 
-    # Only tick forex if market is open
-    if is_forex_market_open():
-        for item in _live['forex']:
-            change = random.gauss(0, 0.00008)
-            dec = 4 if item['price'] < 50 else 2
-            item['price'] = round(item['price'] * (1 + change), dec)
-
-    # Only tick Indian market if market is open
+    # Forex: No fake ticks needed — OANDA provides real prices every 5 seconds
+    # Indian: Only tick if market is open
     if is_indian_market_open():
         for item in _live['indian']:
             change = random.gauss(0, 0.0002)
@@ -725,8 +882,8 @@ async def price_ticker_loop():
             now = time.time()
             if now - _live['last_crypto_fetch'] > 30:
                 asyncio.create_task(_load_crypto())
-            # Only refetch forex/indian if market is open or we have no data
-            if (now - _live['last_forex_fetch'] > 300) and (is_forex_market_open() or not _live['forex']):
+            # OANDA forex: fetch every 5 seconds for real-time data
+            if (now - _live['last_forex_fetch'] > 5) and (is_forex_market_open() or not _live['forex']):
                 asyncio.create_task(_load_forex())
             if (now - _live['last_indian_fetch'] > 300) and (is_indian_market_open() or not _live['indian']):
                 asyncio.create_task(_load_indian())
@@ -806,7 +963,7 @@ IMPORTANT RULES FOR DIVERSITY:
 - SELL signals: stop_loss ABOVE entry, take_profits BELOW entry
 
 Respond ONLY in valid JSON (no markdown, no code blocks, just raw JSON):
-{{"direction":"BUY or SELL","confidence":40-98,"grade":"A+ or A or B+ or B or C","entry_price":number,"take_profit_1":number,"take_profit_2":number,"stop_loss":number,"risk_reward":"1:X.X","timeframe":"string","analysis":"2-3 sentence UNIQUE analysis with specific technical reasoning","key_levels":["specific price level 1","specific price level 2"],"market_condition":"Trending or Ranging or Breakout or Reversal"}}"""
+{{"direction":"BUY or SELL","confidence":40-98,"grade":"A+ or A or B+ or B or C","entry_price":number,"take_profit_1":number,"take_profit_2":number,"stop_loss":number,"risk_reward":"1:X.X","timeframe":"string","analysis":"2-3 sentence UNIQUE analysis with specific technical reasoning","trade_logic":"Concise 1-2 sentence explanation of WHY this trade setup exists (e.g. price rejected from key support, bullish engulfing at demand zone, break of structure)","trade_reason":"What specific indicator or pattern triggered this signal (e.g. RSI oversold divergence, MACD bullish crossover, double bottom formation, order block bounce)","key_levels":["specific price level 1","specific price level 2"],"market_condition":"Trending or Ranging or Breakout or Reversal"}}"""
     )
     try:
         msg = UserMessage(text=f"Generate a trading signal for {data.asset_name} ({data.asset_type.upper()}). Timeframe: {data.timeframe}. {market_context}")

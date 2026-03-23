@@ -17,7 +17,15 @@ const CRYPTO_ASSETS = [
 
 const FOREX_ASSETS = [
   { id: 'eurusd', name: 'EUR/USD' }, { id: 'gbpusd', name: 'GBP/USD' },
-  { id: 'usdjpy', name: 'USD/JPY' }, { id: 'xauusd', name: 'XAU/USD (Gold)' },
+  { id: 'usdjpy', name: 'USD/JPY' }, { id: 'xauusd', name: 'Gold (XAU/USD)' },
+  { id: 'xagusd', name: 'Silver (XAG/USD)' }, { id: 'gbpjpy', name: 'GBP/JPY' },
+  { id: 'audusd', name: 'AUD/USD' }, { id: 'usdchf', name: 'USD/CHF' },
+  { id: 'usdcad', name: 'USD/CAD' }, { id: 'nzdusd', name: 'NZD/USD' },
+  { id: 'eurgbp', name: 'EUR/GBP' }, { id: 'eurjpy', name: 'EUR/JPY' },
+  { id: 'audjpy', name: 'AUD/JPY' }, { id: 'cadjpy', name: 'CAD/JPY' },
+  { id: 'gbpchf', name: 'GBP/CHF' }, { id: 'euraud', name: 'EUR/AUD' },
+  { id: 'eurchf', name: 'EUR/CHF' }, { id: 'gbpaud', name: 'GBP/AUD' },
+  { id: 'gbpnzd', name: 'GBP/NZD' }, { id: 'audnzd', name: 'AUD/NZD' },
 ];
 
 const INDIAN_ASSETS = [
@@ -271,7 +279,19 @@ export default function SignalsPage() {
                         {hitSL && <Badge className="bg-[#FF2E2E]/10 text-[#FF2E2E] text-[9px]"><XCircle className="w-2.5 h-2.5 mr-0.5" />SL Hit</Badge>}
                       </div>
                     )}
-                    {sig.analysis && <p className="text-xs text-white/50 leading-relaxed">{sig.analysis}</p>}
+                    {sig.trade_logic && (
+                      <div className="mt-2 p-2.5 rounded-lg bg-[#6366F1]/[0.04] border border-[#6366F1]/10">
+                        <p className="text-[10px] text-[#6366F1]/70 uppercase tracking-wider font-medium mb-1">Trade Logic</p>
+                        <p className="text-xs text-white/70">{sig.trade_logic}</p>
+                      </div>
+                    )}
+                    {sig.trade_reason && (
+                      <div className="mt-1.5 p-2.5 rounded-lg bg-white/[0.02] border border-white/5">
+                        <p className="text-[10px] text-white/40 uppercase tracking-wider font-medium mb-1">Signal Trigger</p>
+                        <p className="text-xs text-white/60">{sig.trade_reason}</p>
+                      </div>
+                    )}
+                    {sig.analysis && <p className="text-xs text-white/50 leading-relaxed mt-2">{sig.analysis}</p>}
                   </div>
                 </div>
               </CardContent>

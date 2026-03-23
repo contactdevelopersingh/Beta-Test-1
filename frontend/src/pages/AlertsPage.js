@@ -21,7 +21,8 @@ const ALERT_ASSETS = {
   forex: [
     { id: 'eurusd', name: 'EUR/USD' }, { id: 'gbpusd', name: 'GBP/USD' },
     { id: 'usdjpy', name: 'USD/JPY' }, { id: 'xauusd', name: 'Gold (XAU/USD)' },
-    { id: 'xagusd', name: 'Silver (XAG/USD)' },
+    { id: 'xagusd', name: 'Silver (XAG/USD)' }, { id: 'gbpjpy', name: 'GBP/JPY' },
+    { id: 'audusd', name: 'AUD/USD' }, { id: 'eurjpy', name: 'EUR/JPY' },
   ],
   indian: [
     { id: 'nifty50', name: 'NIFTY 50' }, { id: 'sensex', name: 'SENSEX' },

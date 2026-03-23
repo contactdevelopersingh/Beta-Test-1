@@ -184,35 +184,44 @@ export default function MarketsPage() {
                 <thead className="sticky top-0 bg-[#09090B]/95 backdrop-blur-sm border-b border-white/5">
                   <tr className="text-[10px] text-white/40 uppercase tracking-wider">
                     <th className="text-left py-3 px-4">Pair</th>
-                    <th className="text-right py-3 px-4">Price</th>
+                    <th className="text-right py-3 px-4">Bid</th>
+                    <th className="text-right py-3 px-4">Ask</th>
+                    <th className="text-right py-3 px-4 hidden sm:table-cell">Spread</th>
                     <th className="text-right py-3 px-4">Change</th>
-                    <th className="text-right py-3 px-4 hidden sm:table-cell">High</th>
-                    <th className="text-right py-3 px-4 hidden sm:table-cell">Low</th>
-                    <th className="text-right py-3 px-4 hidden md:table-cell">Prev Close</th>
+                    <th className="text-right py-3 px-4 hidden md:table-cell">Type</th>
                     <th className="text-right py-3 px-4"></th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredForex.map(pair => (
+                  {filteredForex.map(pair => {
+                    const dec = pair.price < 50 ? 5 : 2;
+                    return (
                     <tr key={pair.id} className={`market-row border-b border-white/[0.03] cursor-pointer ${priceChanges[pair.id] === 'up' ? 'price-flash-up' : priceChanges[pair.id] === 'down' ? 'price-flash-down' : ''}`} data-testid={`market-forex-${pair.id}`} onClick={() => navigate(`/chart/forex/${pair.id}`)}>
                       <td className="py-3 px-4">
-                        <span className="text-sm text-white font-medium">{pair.symbol}</span>
-                        {pair.name !== pair.symbol && <span className="text-[10px] text-white/30 ml-2">{pair.name}</span>}
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm text-white font-semibold">{pair.symbol}</span>
+                          {pair.name !== pair.symbol && <span className="text-[10px] text-white/30">{pair.name}</span>}
+                        </div>
                       </td>
-                      <td className="py-3 px-4 text-right text-sm text-white font-data font-medium price-value">{fmtPrice(pair.price, pair.price < 50 ? 4 : 2)}</td>
+                      <td className="py-3 px-4 text-right text-sm text-white font-data font-medium price-value">{pair.bid ? fmtPrice(pair.bid, dec) : fmtPrice(pair.price, dec)}</td>
+                      <td className="py-3 px-4 text-right text-sm text-white/70 font-data price-value">{pair.ask ? fmtPrice(pair.ask, dec) : '-'}</td>
+                      <td className="py-3 px-4 text-right text-xs text-white/40 font-data hidden sm:table-cell">{pair.spread != null ? pair.spread.toFixed(1) : '-'}</td>
                       <td className={`py-3 px-4 text-right text-xs font-data font-medium ${pair.change_24h >= 0 ? 'text-[#00FF94]' : 'text-[#FF2E2E]'}`}>
                         {pair.change_24h >= 0 ? '+' : ''}{pair.change_24h?.toFixed(2)}%
                       </td>
-                      <td className="py-3 px-4 text-right text-xs text-white/50 font-data hidden sm:table-cell">{fmtPrice(pair.high, pair.price < 50 ? 4 : 2)}</td>
-                      <td className="py-3 px-4 text-right text-xs text-white/50 font-data hidden sm:table-cell">{fmtPrice(pair.low, pair.price < 50 ? 4 : 2)}</td>
-                      <td className="py-3 px-4 text-right text-xs text-white/40 font-data hidden md:table-cell">{pair.prev_close ? fmtPrice(pair.prev_close, pair.price < 50 ? 4 : 2) : '-'}</td>
+                      <td className="py-3 px-4 text-right hidden md:table-cell">
+                        <span className={`text-[9px] px-1.5 py-0.5 rounded ${pair.category === 'major' ? 'bg-[#6366F1]/10 text-[#6366F1]' : pair.category === 'commodity' ? 'bg-[#EAB308]/10 text-[#EAB308]' : 'bg-white/5 text-white/30'}`}>
+                          {pair.category || 'cross'}
+                        </span>
+                      </td>
                       <td className="py-3 px-4 text-right">
                         <Button variant="ghost" size="icon" className="w-7 h-7 text-white/30 hover:text-[#6366F1]" onClick={(e) => { e.stopPropagation(); addToWatchlist(pair.id, pair.name, 'forex'); }} data-testid={`watchlist-add-${pair.id}`}>
                           <Star className="w-3.5 h-3.5" />
                         </Button>
                       </td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

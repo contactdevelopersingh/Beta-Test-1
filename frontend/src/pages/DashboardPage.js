@@ -353,17 +353,19 @@ export default function DashboardPage() {
                 ) : (
                   <Badge variant="outline" className="ml-1 text-[8px] border-[#EAB308]/30 text-[#EAB308] py-0 h-4">CLOSED</Badge>
                 )}
+                <span className="text-[8px] text-[#6366F1]/60 ml-auto">OANDA</span>
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-1.5">
               {!market_status?.forex?.open && (
                 <p className="text-[10px] text-white/30 mb-2">Showing last closing prices</p>
               )}
-              {forex.slice(0, 5).map(pair => (
-                <div key={pair.id} className={`flex items-center justify-between py-1 ${priceChanges[pair.id] === 'up' ? 'price-flash-up' : priceChanges[pair.id] === 'down' ? 'price-flash-down' : ''}`}>
+              {forex.slice(0, 6).map(pair => (
+                <div key={pair.id} className={`flex items-center justify-between py-1.5 ${priceChanges[pair.id] === 'up' ? 'price-flash-up' : priceChanges[pair.id] === 'down' ? 'price-flash-down' : ''}`}>
                   <span className="text-xs text-white/60">{pair.symbol}</span>
                   <div className="flex items-center gap-2">
-                    <span className="text-xs font-data text-white price-value">{pair.price < 50 ? pair.price.toFixed(4) : pair.price.toFixed(2)}</span>
+                    <span className="text-[10px] font-data text-white/40">{pair.bid ? (pair.bid < 50 ? pair.bid.toFixed(5) : pair.bid.toFixed(2)) : ''}</span>
+                    <span className="text-xs font-data text-white price-value font-medium">{pair.ask ? (pair.ask < 50 ? pair.ask.toFixed(5) : pair.ask.toFixed(2)) : (pair.price < 50 ? pair.price.toFixed(4) : pair.price.toFixed(2))}</span>
                     <span className={`text-[10px] font-data ${pair.change_24h >= 0 ? 'text-[#00FF94]' : 'text-[#FF2E2E]'}`}>
                       {pair.change_24h >= 0 ? '+' : ''}{pair.change_24h?.toFixed(2)}%
                     </span>
