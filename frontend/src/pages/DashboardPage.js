@@ -137,7 +137,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="space-y-6" data-testid="dashboard-page">
+    <div className="space-y-6 page-enter" data-testid="dashboard-page">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

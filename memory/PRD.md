@@ -1,55 +1,75 @@
 # SignalBeast Pro - Product Requirements Document
 
-## Original Problem Statement
-Build a complete, working advanced trading intelligence platform named "SignalBeast Pro". The platform provides live data and charts for Cryptocurrency, Forex, and the full Indian market, with AI-powered signal generation and a trading assistant chat.
+## Overview
+AI-powered trading intelligence platform for Crypto, Forex & Indian Markets with institutional-grade signal generation.
 
-## Data Sources (Production)
-- **Crypto:** Kraken Public API (free, no key, 19 coins, 30s refresh) — real exchange data with 24h OHLCV
-- **Forex:** OANDA REST API (institutional-grade, 20 pairs, 5s refresh) — real bid/ask/spread data
-- **Indian:** yfinance (44 assets — indices + stocks, 5min refresh when market open)
-- **AI:** Emergent LLM Key (GPT-4o) for signal generation and Beast AI Chat
+## Core Architecture
+- **Backend:** FastAPI + MongoDB (motor) + OANDA API + Kraken API + yfinance
+- **Frontend:** React + Tailwind CSS + shadcn/ui + lightweight-charts
+- **AI:** OpenAI GPT-4o via Emergent LLM Key
+- **Auth:** JWT (email/password) + Google OAuth2
 
-## OANDA Integration
-- API Key: configured in backend/.env (OANDA_API_KEY, OANDA_ACCOUNT_ID)
-- Practice URL: https://api-fxpractice.oanda.com/v3
-- 20 Forex pairs: EUR/USD, GBP/USD, USD/JPY, AUD/USD, USD/CHF, USD/CAD, NZD/USD, XAU/USD, XAG/USD, EUR/GBP, EUR/JPY, GBP/JPY, AUD/JPY, CAD/JPY, GBP/CHF, EUR/AUD, EUR/CHF, GBP/AUD, GBP/NZD, AUD/NZD
-- Features: bid/ask spread, category badges (major/commodity/cross), OANDA candle charts
+## Data Sources
+- **Forex (20 pairs):** OANDA API - 5s polling, bid/ask/spread
+- **Crypto (19 pairs):** Kraken API - 30s polling
+- **Indian (44 assets):** yfinance - 5min polling
 
-## Architecture
-- **Backend:** FastAPI + MongoDB + OANDA + Kraken + yfinance + Emergent LLM
-- **Frontend:** React + Tailwind CSS + shadcn/ui + lightweight-charts v5 + Recharts
-- **Real-Time:** HTTP polling (1.5s frontend) + OANDA 5s refresh + Kraken 30s refresh
-- **Background Tasks:** Price ticker (1s) + OANDA fetch (5s) + Kraken fetch (30s) + Alert checker (5 ticks)
+## Implemented Features
 
-## Pages (11 total)
-1. Landing Page 2. Auth (JWT + Google OAuth) 3. Dashboard 4. Signals (with Trade Logic & Reason)
-5. Markets (Bid/Ask/Spread for Forex) 6. Chart Page (OANDA/Kraken data) 7. Portfolio
-8. Alerts 9. Strategy Builder 10. Beast AI Chat 11. Settings
+### Phase 1 - Advanced Signal Generation (Completed: Mar 24, 2026)
+- Multi-timeframe analysis (user selects 3+ TFs: 1m, 5m, 15m, 1H, 4H, 1D, 1W)
+- 10 trading strategies: Auto, EMA Crossover, RSI Divergence, Smart Money (SMC), VWAP, MACD, Bollinger Bands, Ichimoku Cloud, Fibonacci, Price Action
+- SL, TP1, TP2, TP3 levels with every signal
+- Holding duration estimates based on profit targets
+- Confluence scoring (1-6 factors)
+- Enhanced trade logic, trade reason, invalidation level, higher TF bias
+- Risk:Reward ratio calculation
 
-## What's Implemented (March 23, 2026)
-- [x] OANDA forex integration (20 pairs, institutional bid/ask/spread, 5s refresh)
-- [x] Kraken crypto integration (19 coins, real exchange data, 30s refresh)
-- [x] yfinance Indian market (44 assets)
-- [x] TradingView charts with OANDA candles + Kraken OHLC
-- [x] Enhanced signal generator with Trade Logic & Trade Reason
-- [x] Market hours awareness (CLOSED badges for off-hours)
-- [x] Price alerts + notifications system
-- [x] Strategy builder with templates
-- [x] Portfolio management with live P&L
-- [x] Beast AI Chat with session continuity
-- [x] 83 total tracked assets
+### Phase 2 - Platform Features (Completed: Mar 24, 2026)
+- **Trade Journal:** Full CRUD, P&L tracking, emotion tags (calm/confident/fear/greed/fomo/revenge), star ratings (1-5), entry reasoning, post-trade reflection, lesson learned
+- **Admin Panel:** Stats dashboard, user management (CRUD), signal monitoring, system health/data feed status. Admin: contact.developersingh@gmail.com
+- **Pricing Page:** 3 plans (Basic INR 999, Pro INR 2,499, Beast Mode INR 4,999), monthly/yearly toggle, phone contacts (8102126223, 8867678750), WhatsApp integration
 
-## Test Status (Iteration 7)
-- Backend: 100% (18/18 tests passed)
-- Frontend: 100% (all features verified)
-- OANDA integration: Verified (20 pairs, bid/ask/spread, charts)
-- Kraken integration: Verified (19 pairs, OHLC charts)
+### Phase 3 - UI/UX Overhaul (Completed: Mar 24, 2026)
+- Professional institutional finance dark theme
+- Redesigned landing page with markets showcase, features grid, stats bar
+- Typography: Manrope (headings), Sora (body), JetBrains Mono (data/numbers)
+- CSS animations: page-enter, stagger-item, glow-card, tracing-beam, neon-text, confidence-ring
+- Glassmorphism effects, noise overlay, neon accents
+- SEO meta tags (og:title, description, keywords, twitter:card)
+- Branding removal (CSS-based)
 
-## Future Enhancements (Backlog)
-- P1: Community & social features (signal sharing, leaderboards)
-- P1: Email/push notifications for triggered alerts
-- P1: OANDA trade execution (BUY/SELL from SignalBeast)
-- P2: Gamified onboarding, customizable dashboard
-- P2: Advanced technical indicators (RSI, MACD, Bollinger)
-- P2: Strategy backtesting with historical data
-- P3: Mobile improvements, multi-language support
+### Previously Completed
+- JWT + Google OAuth authentication
+- Real-time market data streaming (polling)
+- Market hours awareness (open/closed status)
+- Price alert system with notifications
+- NotificationBell component
+- TradingView-style charts (lightweight-charts)
+- Portfolio page with live valuations
+- Strategy Builder page
+- Beast AI Chat
+
+## Key API Endpoints
+- `GET /api/signals/strategies` - 10 trading strategies
+- `POST /api/signals/generate` - Multi-TF AI signal generation
+- `GET /api/journal` / `POST /api/journal` / `PUT /api/journal/{id}` / `DELETE /api/journal/{id}` - Trade journal CRUD
+- `GET /api/journal/stats` - Win rate, P&L, emotion breakdown
+- `GET /api/admin/stats` / `GET /api/admin/users` / `GET /api/admin/system` - Admin endpoints
+- `GET /api/market/live` - Real-time price data
+- `GET /api/chart/{market}/{asset_id}` - Candlestick data
+
+## Database Collections
+- users, signals, trade_journal, alerts, notifications, chat_history, portfolio, watchlist
+
+## Test Credentials
+- Test user: test@test.com / test123
+- Admin: contact.developersingh@gmail.com / admin123
+
+## Backlog (P1-P3)
+- P1: OANDA WebSocket streaming (replace 5s polling with real-time ticks)
+- P1: One-click trade execution via OANDA order API
+- P2: Advanced SEO (schema markup, sitemap, keyword optimization)
+- P2: Community features & leaderboards
+- P3: Mobile app optimization
+- P3: Multi-language support
