@@ -99,7 +99,7 @@ export default function SettingsPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-white">Dark Mode</p>
-              <p className="text-xs text-white/30">SignalBeast Pro is optimized for dark mode</p>
+              <p className="text-xs text-white/30">Titan Trade is optimized for dark mode</p>
             </div>
             <Switch checked={true} disabled data-testid="dark-mode-switch" />
           </div>

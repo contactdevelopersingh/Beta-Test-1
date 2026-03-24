@@ -15,12 +15,12 @@ export const useAuth = () => {
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [token, setToken] = useState(localStorage.getItem('signalbeast_token'));
+  const [token, setToken] = useState(localStorage.getItem('titan_trade_token'));
 
   const api = useCallback(() => {
     const instance = axios.create({ baseURL: API, withCredentials: true });
     instance.interceptors.request.use(config => {
-      const t = localStorage.getItem('signalbeast_token');
+      const t = localStorage.getItem('titan_trade_token');
       if (t) config.headers.Authorization = `Bearer ${t}`;
       return config;
     });
@@ -33,7 +33,7 @@ export const AuthProvider = ({ children }) => {
       setUser(resp.data);
     } catch {
       setUser(null);
-      localStorage.removeItem('signalbeast_token');
+      localStorage.removeItem('titan_trade_token');
     } finally {
       setLoading(false);
     }
@@ -51,7 +51,7 @@ export const AuthProvider = ({ children }) => {
 
   const loginWithCredentials = async (email, password) => {
     const resp = await api().post('/auth/login', { email, password });
-    localStorage.setItem('signalbeast_token', resp.data.token);
+    localStorage.setItem('titan_trade_token', resp.data.token);
     setToken(resp.data.token);
     setUser(resp.data);
     return resp.data;
@@ -59,7 +59,7 @@ export const AuthProvider = ({ children }) => {
 
   const register = async (email, password, name) => {
     const resp = await api().post('/auth/register', { email, password, name });
-    localStorage.setItem('signalbeast_token', resp.data.token);
+    localStorage.setItem('titan_trade_token', resp.data.token);
     setToken(resp.data.token);
     setUser(resp.data);
     return resp.data;
@@ -73,7 +73,7 @@ export const AuthProvider = ({ children }) => {
 
   const processSession = async (sessionId) => {
     const resp = await api().post('/auth/session', { session_id: sessionId });
-    localStorage.setItem('signalbeast_token', resp.data.token);
+    localStorage.setItem('titan_trade_token', resp.data.token);
     setToken(resp.data.token);
     setUser(resp.data);
     return resp.data;
@@ -81,7 +81,7 @@ export const AuthProvider = ({ children }) => {
 
   const logout = async () => {
     try { await api().post('/auth/logout'); } catch {}
-    localStorage.removeItem('signalbeast_token');
+    localStorage.removeItem('titan_trade_token');
     setToken(null);
     setUser(null);
   };

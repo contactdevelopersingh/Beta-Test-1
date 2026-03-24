@@ -59,7 +59,7 @@ export default function ChatPage() {
             <Activity className="w-5 h-5 text-[#6366F1]" />
           </div>
           <div>
-            <h1 className="text-lg font-bold text-white" style={{ fontFamily: 'Manrope' }}>Beast AI</h1>
+            <h1 className="text-lg font-bold text-white" style={{ fontFamily: 'Manrope' }}>Titan AI</h1>
             <p className="text-[11px] text-white/40">Your elite trading intelligence assistant</p>
           </div>
         </div>
@@ -75,7 +75,7 @@ export default function ChatPage() {
             <div className="w-16 h-16 rounded-2xl bg-[#6366F1]/10 flex items-center justify-center mb-4 pulse-glow">
               <Activity className="w-8 h-8 text-[#6366F1]" />
             </div>
-            <h2 className="text-lg font-bold text-white mb-2" style={{ fontFamily: 'Manrope' }}>Beast AI Trading Assistant</h2>
+            <h2 className="text-lg font-bold text-white mb-2" style={{ fontFamily: 'Manrope' }}>Titan AI Trading Assistant</h2>
             <p className="text-sm text-white/40 max-w-md mb-6">
               Ask me about market analysis, trading strategies, technical indicators, or any trading question.
             </p>
@@ -106,7 +106,7 @@ export default function ChatPage() {
               {msg.role === 'assistant' && (
                 <div className="flex items-center gap-1.5 mb-2">
                   <Activity className="w-3 h-3 text-[#6366F1]" />
-                  <span className="text-[10px] font-semibold text-[#6366F1] uppercase tracking-wider">Beast AI</span>
+                  <span className="text-[10px] font-semibold text-[#6366F1] uppercase tracking-wider">Titan AI</span>
                 </div>
               )}
               <p className="text-sm text-white/90 leading-relaxed whitespace-pre-wrap">{msg.content}</p>
@@ -119,7 +119,7 @@ export default function ChatPage() {
             <div className="chat-bubble-ai px-4 py-3">
               <div className="flex items-center gap-2">
                 <Loader2 className="w-3.5 h-3.5 text-[#6366F1] animate-spin" />
-                <span className="text-xs text-white/40">Beast AI is thinking...</span>
+                <span className="text-xs text-white/40">Titan AI is thinking...</span>
               </div>
             </div>
           </div>
@@ -132,7 +132,7 @@ export default function ChatPage() {
           <Input
             ref={inputRef}
             className="flex-1 bg-black/50 border-white/10 focus:border-[#6366F1] text-white text-sm"
-            placeholder="Ask Beast AI about any market..."
+            placeholder="Ask Titan AI about any market..."
             value={input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
@@ -148,7 +148,7 @@ export default function ChatPage() {
             {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
           </Button>
         </div>
-        <p className="text-[10px] text-white/20 mt-2 text-center">Beast AI may produce inaccurate information. Not financial advice. Always DYOR.</p>
+        <p className="text-[10px] text-white/20 mt-2 text-center">Titan AI may produce inaccurate information. Not financial advice. Always DYOR.</p>
       </div>
     </div>
   );

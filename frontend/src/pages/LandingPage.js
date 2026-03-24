@@ -34,7 +34,7 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <Activity className="w-6 h-6 text-[#6366F1]" />
-            <span className="text-lg font-extrabold text-white tracking-tight uppercase" style={{ fontFamily: 'Manrope' }}>SignalBeast</span>
+            <span className="text-lg font-extrabold text-white tracking-tight uppercase" style={{ fontFamily: 'Manrope' }}>Titan Trade</span>
             <span className="text-[9px] bg-[#6366F1]/20 text-[#6366F1] px-1.5 py-0.5 rounded font-bold tracking-widest">PRO</span>
           </div>
           <div className="flex items-center gap-3">
@@ -186,9 +186,9 @@ export default function LandingPage() {
         <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <Activity className="w-4 h-4 text-[#6366F1]" />
-            <span className="text-sm text-white/40 font-mono">SignalBeast Pro</span>
+            <span className="text-sm text-white/40 font-mono">Titan Trade</span>
           </div>
-          <p className="text-[10px] text-white/20 font-mono">Not financial advice. Always DYOR. &copy; 2026 SignalBeast Pro.</p>
+          <p className="text-[10px] text-white/20 font-mono">Not financial advice. Always DYOR. &copy; 2026 Titan Trade.</p>
         </div>
       </footer>
     </div>

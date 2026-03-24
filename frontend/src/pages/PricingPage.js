@@ -10,8 +10,8 @@ const PLANS = [
   {
     id: 'basic',
     name: 'Basic',
-    price: '999',
-    period: '/month',
+    weeklyPrice: '499',
+    monthlyPrice: '1,499',
     description: 'Essential tools for beginner traders',
     color: '#6366F1',
     features: [
@@ -22,16 +22,16 @@ const PLANS = [
       { text: 'Trade Journal', included: true },
       { text: 'Multi-timeframe analysis', included: false },
       { text: 'Strategy selection', included: false },
-      { text: 'Beast AI Chat', included: false },
-      { text: 'Admin dashboard', included: false },
+      { text: 'Titan AI Chat', included: false },
+      { text: 'Priority support', included: false },
     ],
     cta: 'Get Started',
   },
   {
     id: 'pro',
     name: 'Pro',
-    price: '2,499',
-    period: '/month',
+    weeklyPrice: '999',
+    monthlyPrice: '3,499',
     description: 'Advanced tools for serious traders',
     color: '#00FF94',
     popular: true,
@@ -42,17 +42,17 @@ const PLANS = [
       { text: '10 Strategy templates', included: true },
       { text: 'SL/TP & holding duration', included: true },
       { text: 'Trade Journal with analytics', included: true },
-      { text: 'Beast AI Chat (100 msgs/day)', included: true },
+      { text: 'Titan AI Chat (100 msgs/day)', included: true },
       { text: 'Unlimited price alerts', included: true },
       { text: 'Priority support', included: true },
     ],
     cta: 'Go Pro',
   },
   {
-    id: 'beast',
-    name: 'Beast Mode',
-    price: '4,999',
-    period: '/month',
+    id: 'titan',
+    name: 'Titan',
+    weeklyPrice: '1,999',
+    monthlyPrice: '6,999',
     description: 'Institutional-grade trading intelligence',
     color: '#FFD700',
     features: [
@@ -62,26 +62,20 @@ const PLANS = [
       { text: 'All strategies + custom strategies', included: true },
       { text: 'Advanced SL/TP with invalidation levels', included: true },
       { text: 'Trade Journal + AI analysis', included: true },
-      { text: 'Unlimited Beast AI Chat', included: true },
+      { text: 'Unlimited Titan AI Chat', included: true },
       { text: 'Portfolio analytics + P&L tracking', included: true },
       { text: 'Dedicated support + early features', included: true },
     ],
-    cta: 'Unleash the Beast',
+    cta: 'Go Titan',
   },
 ];
 
 export default function PricingPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [billingCycle, setBillingCycle] = useState('monthly');
+  const [billingCycle, setBillingCycle] = useState('weekly');
 
-  const getPrice = (plan) => {
-    if (billingCycle === 'yearly') {
-      const monthly = parseInt(plan.price.replace(',', ''));
-      return Math.round(monthly * 10).toLocaleString();
-    }
-    return plan.price;
-  };
+  const getPrice = (plan) => billingCycle === 'weekly' ? plan.weeklyPrice : plan.monthlyPrice;
 
   return (
     <div className="space-y-8" data-testid="pricing-page">
@@ -96,16 +90,16 @@ export default function PricingPage() {
 
       {/* Billing Toggle */}
       <div className="flex items-center justify-center gap-3" data-testid="billing-toggle">
-        <span className={`text-sm ${billingCycle === 'monthly' ? 'text-white' : 'text-white/40'}`}>Monthly</span>
-        <button onClick={() => setBillingCycle(prev => prev === 'monthly' ? 'yearly' : 'monthly')}
+        <span className={`text-sm ${billingCycle === 'weekly' ? 'text-white' : 'text-white/40'}`}>Weekly</span>
+        <button onClick={() => setBillingCycle(prev => prev === 'weekly' ? 'monthly' : 'weekly')}
           className="relative w-12 h-6 rounded-full bg-white/10 border border-white/20 transition-colors"
           data-testid="billing-switch">
           <div className={`absolute top-0.5 w-5 h-5 rounded-full transition-all ${
-            billingCycle === 'yearly' ? 'left-6 bg-[#00FF94]' : 'left-0.5 bg-white/60'
+            billingCycle === 'monthly' ? 'left-6 bg-[#00FF94]' : 'left-0.5 bg-white/60'
           }`} />
         </button>
-        <span className={`text-sm ${billingCycle === 'yearly' ? 'text-white' : 'text-white/40'}`}>
-          Yearly <Badge className="bg-[#00FF94]/10 text-[#00FF94] text-[9px] ml-1">Save 17%</Badge>
+        <span className={`text-sm ${billingCycle === 'monthly' ? 'text-white' : 'text-white/40'}`}>
+          Monthly <Badge className="bg-[#00FF94]/10 text-[#00FF94] text-[9px] ml-1">Best Value</Badge>
         </span>
       </div>
 
@@ -128,14 +122,14 @@ export default function PricingPage() {
                 <div className="flex items-center gap-2 mb-2">
                   {plan.id === 'basic' && <Rocket className="w-5 h-5" style={{ color: plan.color }} />}
                   {plan.id === 'pro' && <Zap className="w-5 h-5" style={{ color: plan.color }} />}
-                  {plan.id === 'beast' && <Crown className="w-5 h-5" style={{ color: plan.color }} />}
+                  {plan.id === 'titan' && <Crown className="w-5 h-5" style={{ color: plan.color }} />}
                   <h3 className="text-lg font-bold text-white">{plan.name}</h3>
                 </div>
                 <p className="text-xs text-white/40 mb-4">{plan.description}</p>
                 <div className="flex items-baseline gap-1">
                   <span className="text-xs text-white/40">INR</span>
                   <span className="text-4xl font-bold font-data text-white">{getPrice(plan)}</span>
-                  <span className="text-sm text-white/40">{billingCycle === 'yearly' ? '/year' : plan.period}</span>
+                  <span className="text-sm text-white/40">/{billingCycle === 'weekly' ? 'week' : 'month'}</span>
                 </div>
               </div>
 
@@ -161,7 +155,7 @@ export default function PricingPage() {
                 }}
                 onClick={() => {
                   if (user) {
-                    window.open(`https://wa.me/918102126223?text=Hi! I'm interested in the SignalBeast Pro ${plan.name} plan (INR ${getPrice(plan)}${billingCycle === 'yearly' ? '/year' : plan.period}).`, '_blank');
+                    window.open(`https://wa.me/918102126223?text=Hi! I'm interested in the Titan Trade ${plan.name} plan (INR ${getPrice(plan)}/${billingCycle === 'weekly' ? 'week' : 'month'}).`, '_blank');
                   } else {
                     navigate('/auth');
                   }
@@ -191,7 +185,7 @@ export default function PricingPage() {
             </a>
           </div>
           <div className="flex items-center justify-center gap-4">
-            <a href="https://wa.me/918102126223?text=Hi! I'm interested in SignalBeast Pro premium plans."
+            <a href="https://wa.me/918102126223?text=Hi! I'm interested in Titan Trade premium plans."
               target="_blank" rel="noopener noreferrer"
               className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-[#25D366]/10 border border-[#25D366]/30 text-[#25D366] text-sm hover:bg-[#25D366]/20 transition-colors"
               data-testid="contact-whatsapp">

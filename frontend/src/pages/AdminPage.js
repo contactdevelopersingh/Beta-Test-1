@@ -3,7 +3,9 @@ import { useAuth } from '../context/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
-import { Shield, Users, Zap, Activity, Bell, Trash2, Server, Database, Wifi, WifiOff, BarChart3, AlertTriangle } from 'lucide-react';
+import { Input } from '../components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
+import { Shield, Users, Zap, Activity, Bell, Trash2, Server, Database, Wifi, WifiOff, BarChart3, CreditCard, Clock, UserCheck } from 'lucide-react';
 import { toast } from 'sonner';
 
 const ADMIN_EMAIL = "contact.developersingh@gmail.com";
@@ -14,8 +16,15 @@ export default function AdminPage() {
   const [users, setUsers] = useState([]);
   const [signals, setSignals] = useState([]);
   const [system, setSystem] = useState(null);
+  const [plans, setPlans] = useState([]);
   const [activeTab, setActiveTab] = useState('overview');
   const [loading, setLoading] = useState(true);
+
+  // Plan assignment form
+  const [planForm, setPlanForm] = useState({
+    email: '', plan_name: 'basic', billing_cycle: 'weekly',
+    duration_days: '', duration_hours: ''
+  });
 
   const isAdmin = user?.email === ADMIN_EMAIL;
 
@@ -26,16 +35,18 @@ export default function AdminPage() {
 
   const fetchData = async () => {
     try {
-      const [statsRes, usersRes, signalsRes, systemRes] = await Promise.all([
+      const [statsRes, usersRes, signalsRes, systemRes, plansRes] = await Promise.all([
         api.get('/admin/stats'),
         api.get('/admin/users'),
         api.get('/admin/signals?limit=30'),
         api.get('/admin/system'),
+        api.get('/admin/plans'),
       ]);
       setStats(statsRes.data);
       setUsers(usersRes.data.users || []);
       setSignals(signalsRes.data.signals || []);
       setSystem(systemRes.data);
+      setPlans(plansRes.data.plans || []);
     } catch (e) {
       console.error(e);
       toast.error('Failed to load admin data');
@@ -49,9 +60,33 @@ export default function AdminPage() {
       await api.delete(`/admin/users/${userId}`);
       toast.success('User deleted');
       fetchData();
-    } catch (e) {
-      toast.error(e.response?.data?.detail || 'Failed to delete user');
-    }
+    } catch (e) { toast.error(e.response?.data?.detail || 'Failed to delete user'); }
+  };
+
+  const assignPlan = async () => {
+    if (!planForm.email) { toast.error('Enter user email'); return; }
+    try {
+      const payload = {
+        email: planForm.email,
+        plan_name: planForm.plan_name,
+        billing_cycle: planForm.billing_cycle,
+      };
+      if (planForm.duration_days) payload.duration_days = parseInt(planForm.duration_days);
+      if (planForm.duration_hours) payload.duration_hours = parseInt(planForm.duration_hours);
+      await api.post('/admin/plans/assign', payload);
+      toast.success(`Plan assigned to ${planForm.email}`);
+      setPlanForm({ email: '', plan_name: 'basic', billing_cycle: 'weekly', duration_days: '', duration_hours: '' });
+      fetchData();
+    } catch (e) { toast.error(e.response?.data?.detail || 'Failed to assign plan'); }
+  };
+
+  const revokePlan = async (userId) => {
+    if (!window.confirm('Revoke this user\'s plan?')) return;
+    try {
+      await api.delete(`/admin/plans/${userId}`);
+      toast.success('Plan revoked');
+      fetchData();
+    } catch (e) { toast.error(e.response?.data?.detail || 'Failed to revoke plan'); }
   };
 
   if (!isAdmin) {
@@ -75,6 +110,7 @@ export default function AdminPage() {
   const tabs = [
     { id: 'overview', label: 'Overview', icon: BarChart3 },
     { id: 'users', label: 'Users', icon: Users },
+    { id: 'plans', label: 'Plans', icon: CreditCard },
     { id: 'signals', label: 'Signals', icon: Zap },
     { id: 'system', label: 'System', icon: Server },
   ];
@@ -85,7 +121,7 @@ export default function AdminPage() {
         <h1 className="text-2xl font-bold text-white flex items-center gap-2" style={{ fontFamily: 'Manrope' }}>
           <Shield className="w-6 h-6 text-[#FF2E2E]" /> Admin Panel
         </h1>
-        <p className="text-sm text-white/40 mt-1">Platform management & monitoring</p>
+        <p className="text-sm text-white/40 mt-1">Titan Trade platform management</p>
       </div>
 
       {/* Tabs */}
@@ -106,11 +142,12 @@ export default function AdminPage() {
       {/* Overview Tab */}
       {activeTab === 'overview' && stats && (
         <div className="space-y-6">
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
             <StatCard label="Total Users" value={stats.total_users} icon={Users} color="#6366F1" />
             <StatCard label="Total Signals" value={stats.total_signals} icon={Zap} color="#00FF94" />
             <StatCard label="Total Trades" value={stats.total_trades} icon={BarChart3} color="#FFD700" />
             <StatCard label="Active Alerts" value={stats.active_alerts} icon={Bell} color="#FF2E2E" />
+            <StatCard label="Active Plans" value={plans.filter(p => p.status === 'active').length} icon={CreditCard} color="#00FFB2" />
           </div>
           {stats.system_health && (
             <Card className="glass-panel border-white/10">
@@ -148,28 +185,149 @@ export default function AdminPage() {
       {activeTab === 'users' && (
         <div className="space-y-3">
           <p className="text-xs text-white/40">{users.length} registered users</p>
-          {users.map(u => (
-            <Card key={u.user_id} className="glass-panel border-white/10" data-testid={`admin-user-${u.user_id}`}>
-              <CardContent className="p-4 flex items-center justify-between">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <p className="text-sm text-white font-medium">{u.name || 'Unnamed'}</p>
-                    <Badge variant="outline" className="text-[9px] border-white/20 text-white/40">{u.auth_type || 'jwt'}</Badge>
-                    {u.email === ADMIN_EMAIL && <Badge className="bg-[#FF2E2E]/10 text-[#FF2E2E] text-[9px]">Admin</Badge>}
+          {users.map(u => {
+            const userPlan = plans.find(p => p.user_id === u.user_id && p.status === 'active');
+            return (
+              <Card key={u.user_id} className="glass-panel border-white/10" data-testid={`admin-user-${u.user_id}`}>
+                <CardContent className="p-4 flex items-center justify-between">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm text-white font-medium">{u.name || 'Unnamed'}</p>
+                      <Badge variant="outline" className="text-[9px] border-white/20 text-white/40">{u.auth_type || 'jwt'}</Badge>
+                      {u.email === ADMIN_EMAIL && <Badge className="bg-[#FF2E2E]/10 text-[#FF2E2E] text-[9px]">Admin</Badge>}
+                      {userPlan && (
+                        <Badge className="bg-[#FFD700]/10 text-[#FFD700] text-[9px] capitalize">{userPlan.plan_name}</Badge>
+                      )}
+                    </div>
+                    <p className="text-[10px] text-white/40">{u.email}</p>
+                    <p className="text-[10px] text-white/30">ID: {u.user_id} | Joined: {new Date(u.created_at).toLocaleDateString()}</p>
                   </div>
-                  <p className="text-[10px] text-white/40">{u.email}</p>
-                  <p className="text-[10px] text-white/30">ID: {u.user_id} | Joined: {new Date(u.created_at).toLocaleDateString()}</p>
+                  {u.email !== ADMIN_EMAIL && (
+                    <Button variant="ghost" size="sm" onClick={() => deleteUser(u.user_id)}
+                      className="text-white/30 hover:text-red-400 hover:bg-red-500/10"
+                      data-testid={`delete-user-${u.user_id}`}>
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Plans Tab */}
+      {activeTab === 'plans' && (
+        <div className="space-y-6">
+          {/* Assign Plan Form */}
+          <Card className="glass-panel border-white/10 border-l-2 border-l-[#FFD700]" data-testid="assign-plan-form">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm text-white/80 flex items-center gap-2">
+                <UserCheck className="w-4 h-4 text-[#FFD700]" /> Assign Plan to User
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                <div className="col-span-2 sm:col-span-1">
+                  <label className="text-[10px] text-white/40 mb-1 block">User Email</label>
+                  <Input value={planForm.email} onChange={e => setPlanForm(p => ({...p, email: e.target.value}))}
+                    placeholder="user@email.com" className="bg-black/50 border-white/10 text-white text-sm" data-testid="plan-email-input" />
                 </div>
-                {u.email !== ADMIN_EMAIL && (
-                  <Button variant="ghost" size="sm" onClick={() => deleteUser(u.user_id)}
-                    className="text-white/30 hover:text-red-400 hover:bg-red-500/10"
-                    data-testid={`delete-user-${u.user_id}`}>
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                )}
-              </CardContent>
-            </Card>
-          ))}
+                <div>
+                  <label className="text-[10px] text-white/40 mb-1 block">Plan</label>
+                  <Select value={planForm.plan_name} onValueChange={v => setPlanForm(p => ({...p, plan_name: v}))}>
+                    <SelectTrigger className="bg-black/50 border-white/10 text-white text-sm" data-testid="plan-name-select">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-[#09090B] border-white/10">
+                      <SelectItem value="free">Free</SelectItem>
+                      <SelectItem value="basic">Basic</SelectItem>
+                      <SelectItem value="pro">Pro</SelectItem>
+                      <SelectItem value="titan">Titan</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="text-[10px] text-white/40 mb-1 block">Billing Cycle</label>
+                  <Select value={planForm.billing_cycle} onValueChange={v => setPlanForm(p => ({...p, billing_cycle: v}))}>
+                    <SelectTrigger className="bg-black/50 border-white/10 text-white text-sm" data-testid="plan-cycle-select">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-[#09090B] border-white/10">
+                      <SelectItem value="weekly">Weekly (7 days)</SelectItem>
+                      <SelectItem value="monthly">Monthly (30 days)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="text-[10px] text-white/40 mb-1 block">Custom Days</label>
+                  <Input type="number" value={planForm.duration_days} onChange={e => setPlanForm(p => ({...p, duration_days: e.target.value, duration_hours: ''}))}
+                    placeholder="Optional" className="bg-black/50 border-white/10 text-white text-sm" data-testid="plan-days-input" />
+                </div>
+                <div>
+                  <label className="text-[10px] text-white/40 mb-1 block">Custom Hours</label>
+                  <Input type="number" value={planForm.duration_hours} onChange={e => setPlanForm(p => ({...p, duration_hours: e.target.value, duration_days: ''}))}
+                    placeholder="Optional" className="bg-black/50 border-white/10 text-white text-sm" data-testid="plan-hours-input" />
+                </div>
+              </div>
+              <Button onClick={assignPlan} className="bg-[#FFD700] hover:bg-[#FFD700]/80 text-black text-xs font-semibold px-6"
+                data-testid="assign-plan-btn">
+                <UserCheck className="w-3.5 h-3.5 mr-1.5" /> Assign Plan
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Active Plans List */}
+          <div className="space-y-3">
+            <p className="text-xs text-white/40">{plans.length} plan assignments</p>
+            {plans.length === 0 ? (
+              <Card className="glass-panel border-white/10">
+                <CardContent className="py-8 text-center">
+                  <CreditCard className="w-8 h-8 text-white/10 mx-auto mb-2" />
+                  <p className="text-xs text-white/40">No plans assigned yet</p>
+                </CardContent>
+              </Card>
+            ) : (
+              plans.map(plan => (
+                <Card key={plan.user_id} className="glass-panel border-white/10" data-testid={`plan-${plan.user_id}`}>
+                  <CardContent className="p-4 flex items-center justify-between">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm text-white font-medium">{plan.email}</p>
+                        <Badge className={`text-[9px] capitalize ${
+                          plan.plan_name === 'titan' ? 'bg-[#FFD700]/10 text-[#FFD700]' :
+                          plan.plan_name === 'pro' ? 'bg-[#00FF94]/10 text-[#00FF94]' :
+                          plan.plan_name === 'basic' ? 'bg-[#6366F1]/10 text-[#6366F1]' :
+                          'bg-white/10 text-white/40'
+                        }`}>{plan.plan_name}</Badge>
+                        <Badge variant="outline" className="text-[9px] border-white/20 text-white/40">{plan.billing_cycle}</Badge>
+                        <Badge className={`text-[9px] ${
+                          plan.status === 'active' ? 'bg-[#00FF94]/10 text-[#00FF94]' :
+                          plan.status === 'expired' ? 'bg-[#EAB308]/10 text-[#EAB308]' :
+                          'bg-[#FF2E2E]/10 text-[#FF2E2E]'
+                        }`}>{plan.status}</Badge>
+                      </div>
+                      <div className="flex items-center gap-3 text-[10px] text-white/30">
+                        <span className="flex items-center gap-1">
+                          <Clock className="w-3 h-3" /> Starts: {new Date(plan.starts_at).toLocaleString()}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          Expires: {new Date(plan.expires_at).toLocaleString()}
+                        </span>
+                      </div>
+                    </div>
+                    {plan.status === 'active' && (
+                      <Button variant="ghost" size="sm" onClick={() => revokePlan(plan.user_id)}
+                        className="text-white/30 hover:text-red-400 hover:bg-red-500/10"
+                        data-testid={`revoke-plan-${plan.user_id}`}>
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    )}
+                  </CardContent>
+                </Card>
+              ))
+            )}
+          </div>
         </div>
       )}
 

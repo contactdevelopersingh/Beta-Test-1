@@ -29,7 +29,7 @@ client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ['DB_NAME']]
 
 # Config
-JWT_SECRET = os.environ.get('JWT_SECRET', 'signalbeast-pro-jwt-secret-2026')
+JWT_SECRET = os.environ.get('JWT_SECRET', 'titan-trade-jwt-secret-2026')
 JWT_ALGORITHM = 'HS256'
 EMERGENT_LLM_KEY = os.environ.get('EMERGENT_LLM_KEY')
 COINGECKO_BASE = 'https://api.coingecko.com/api/v3'
@@ -224,7 +224,7 @@ async def get_live_market_data(symbols, cache_key, ttl=180):
             return _cache[cache_key]['data']
         return {}
 
-app = FastAPI(title="SignalBeast Pro API")
+app = FastAPI(title="Titan Trade API")
 api_router = APIRouter(prefix="/api")
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -986,7 +986,7 @@ async def generate_signal(data: SignalRequest, user: dict = Depends(get_current_
     direction_bias = random.choice(["bullish", "bearish", "mixed"])
     confidence_range = random.choice(["low (40-55)", "medium (56-72)", "high (73-88)", "very high (89-98)"])
 
-    system_prompt = f"""You are TradeGuru Pro, SignalBeast's elite AI trading analyst with 25+ years of institutional experience. Timestamp: {datetime.now(timezone.utc).isoformat()}. Seed: {signal_seed}.
+    system_prompt = f"""You are Titan AI, Titan Trade's elite AI trading analyst with 25+ years of institutional experience. Timestamp: {datetime.now(timezone.utc).isoformat()}. Seed: {signal_seed}.
 
 === MULTI-TIMEFRAME ANALYSIS FRAMEWORK ===
 Analyze these timeframes: [{timeframes_str}]
@@ -1152,13 +1152,13 @@ async def beast_chat(data: ChatMessage, user: dict = Depends(get_current_user)):
     history_text = ""
     if history:
         for h in reversed(history):
-            role = "User" if h['role'] == 'user' else "Beast AI"
+            role = "User" if h['role'] == 'user' else "Titan AI"
             history_text += f"{role}: {h['content']}\n"
 
     chat = LlmChat(
         api_key=EMERGENT_LLM_KEY,
         session_id=session_id,
-        system_message=f"""You are Beast AI, the elite trading intelligence assistant for SignalBeast Pro. You are an expert in:
+        system_message=f"""You are Titan AI, the elite trading intelligence assistant for Titan Trade. You are an expert in:
 - Cryptocurrency markets, DeFi, and on-chain analysis
 - Forex trading and currency analysis
 - Indian stock markets (NSE/BSE), NIFTY, SENSEX
@@ -1490,6 +1490,108 @@ async def admin_system(user: dict = Depends(get_admin_user)):
         },
         "market_status": get_market_status(),
     }
+
+# ==================== PLAN MANAGEMENT ====================
+
+class PlanAssignment(BaseModel):
+    email: str
+    plan_name: str  # free, basic, pro, titan
+    billing_cycle: str  # weekly, monthly
+    duration_days: Optional[int] = None  # custom duration in days
+    duration_hours: Optional[int] = None  # custom duration in hours
+
+class PlanUpdate(BaseModel):
+    plan_name: Optional[str] = None
+    billing_cycle: Optional[str] = None
+    duration_days: Optional[int] = None
+    duration_hours: Optional[int] = None
+    status: Optional[str] = None  # active, revoked
+
+PLAN_DURATIONS = {
+    "weekly": 7,
+    "monthly": 30,
+}
+
+@api_router.post("/admin/plans/assign")
+async def assign_plan(data: PlanAssignment, admin: dict = Depends(get_admin_user)):
+    target_user = await db.users.find_one({"email": data.email}, {"_id": 0})
+    if not target_user:
+        raise HTTPException(status_code=404, detail=f"User with email {data.email} not found")
+
+    now = datetime.now(timezone.utc)
+    if data.duration_hours:
+        expires = now + timedelta(hours=data.duration_hours)
+    elif data.duration_days:
+        expires = now + timedelta(days=data.duration_days)
+    else:
+        days = PLAN_DURATIONS.get(data.billing_cycle, 30)
+        expires = now + timedelta(days=days)
+
+    plan_doc = {
+        "user_id": target_user['user_id'],
+        "email": data.email,
+        "plan_name": data.plan_name,
+        "billing_cycle": data.billing_cycle,
+        "starts_at": now.isoformat(),
+        "expires_at": expires.isoformat(),
+        "assigned_by": admin['user_id'],
+        "status": "active",
+        "created_at": now.isoformat(),
+        "updated_at": now.isoformat(),
+    }
+    await db.user_plans.update_one(
+        {"user_id": target_user['user_id']},
+        {"$set": plan_doc},
+        upsert=True
+    )
+    return {"message": f"Plan '{data.plan_name}' ({data.billing_cycle}) assigned to {data.email}", "plan": plan_doc}
+
+@api_router.get("/admin/plans")
+async def get_all_plans(admin: dict = Depends(get_admin_user)):
+    plans = await db.user_plans.find({}, {"_id": 0}).sort("updated_at", -1).to_list(500)
+    now = datetime.now(timezone.utc).isoformat()
+    for p in plans:
+        if p.get('status') == 'active' and p.get('expires_at', '') < now:
+            p['status'] = 'expired'
+            await db.user_plans.update_one({"user_id": p['user_id']}, {"$set": {"status": "expired"}})
+    return {"plans": plans}
+
+@api_router.put("/admin/plans/{user_id}")
+async def update_plan(user_id: str, data: PlanUpdate, admin: dict = Depends(get_admin_user)):
+    existing = await db.user_plans.find_one({"user_id": user_id}, {"_id": 0})
+    if not existing:
+        raise HTTPException(status_code=404, detail="No plan found for this user")
+    updates = {k: v for k, v in data.model_dump().items() if v is not None}
+    now = datetime.now(timezone.utc)
+    if data.duration_hours:
+        updates['expires_at'] = (now + timedelta(hours=data.duration_hours)).isoformat()
+    elif data.duration_days:
+        updates['expires_at'] = (now + timedelta(days=data.duration_days)).isoformat()
+    updates['updated_at'] = now.isoformat()
+    await db.user_plans.update_one({"user_id": user_id}, {"$set": updates})
+    updated = await db.user_plans.find_one({"user_id": user_id}, {"_id": 0})
+    return updated
+
+@api_router.delete("/admin/plans/{user_id}")
+async def revoke_plan(user_id: str, admin: dict = Depends(get_admin_user)):
+    result = await db.user_plans.update_one(
+        {"user_id": user_id},
+        {"$set": {"status": "revoked", "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="No plan found for this user")
+    return {"message": "Plan revoked"}
+
+@api_router.get("/user/plan")
+async def get_my_plan(user: dict = Depends(get_current_user)):
+    plan = await db.user_plans.find_one({"user_id": user['user_id']}, {"_id": 0})
+    if not plan:
+        return {"plan_name": "free", "status": "active", "billing_cycle": "none", "expires_at": None}
+    now = datetime.now(timezone.utc).isoformat()
+    if plan.get('status') == 'active' and plan.get('expires_at', '') < now:
+        plan['status'] = 'expired'
+        await db.user_plans.update_one({"user_id": user['user_id']}, {"$set": {"status": "expired"}})
+    return plan
 
 # ==================== APP SETUP ====================
 

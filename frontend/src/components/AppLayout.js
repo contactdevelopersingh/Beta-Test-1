@@ -1,14 +1,12 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { NotificationBell } from './NotificationBell';
-import { LayoutDashboard, Zap, TrendingUp, PieChart, MessageSquare, Settings, LogOut, Menu, X, Activity, Bell, Layers, BookOpen, Shield, CreditCard } from 'lucide-react';
+import { LayoutDashboard, Zap, TrendingUp, PieChart, MessageSquare, Settings, LogOut, Menu, X, Activity, Bell, Layers, BookOpen, CreditCard } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from './ui/button';
 import { Avatar, AvatarFallback } from './ui/avatar';
 import { Sheet, SheetContent, SheetTrigger } from './ui/sheet';
 import { Toaster } from './ui/sonner';
-
-const ADMIN_EMAIL = "contact.developersingh@gmail.com";
 
 const navItems = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
@@ -18,7 +16,7 @@ const navItems = [
   { to: '/portfolio', icon: PieChart, label: 'Portfolio' },
   { to: '/alerts', icon: Bell, label: 'Alerts' },
   { to: '/strategy', icon: Layers, label: 'Strategy' },
-  { to: '/chat', icon: MessageSquare, label: 'Beast AI' },
+  { to: '/chat', icon: MessageSquare, label: 'Titan AI' },
   { to: '/pricing', icon: CreditCard, label: 'Pricing' },
   { to: '/settings', icon: Settings, label: 'Settings' },
 ];
@@ -26,7 +24,6 @@ const navItems = [
 const SidebarContent = ({ onClose }) => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const isAdmin = user?.email === ADMIN_EMAIL;
 
   const handleLogout = async () => {
     await logout();
@@ -41,7 +38,7 @@ const SidebarContent = ({ onClose }) => {
             <Activity className="w-5 h-5 text-white" />
           </div>
           <div>
-            <h1 className="text-base font-bold text-white tracking-tight" style={{ fontFamily: 'Manrope' }}>SignalBeast</h1>
+            <h1 className="text-base font-bold text-white tracking-tight" style={{ fontFamily: 'Manrope' }}>Titan Trade</h1>
             <span className="text-[10px] uppercase tracking-widest text-[#6366F1] font-semibold">PRO</span>
           </div>
         </div>
@@ -64,21 +61,6 @@ const SidebarContent = ({ onClose }) => {
             {label}
           </NavLink>
         ))}
-        {isAdmin && (
-          <NavLink
-            to="/admin"
-            onClick={onClose}
-            className={({ isActive }) =>
-              `sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium ${
-                isActive ? 'active bg-[#FF2E2E]/10 text-[#FF2E2E]' : 'text-white/60 hover:text-white'
-              }`
-            }
-            data-testid="nav-admin"
-          >
-            <Shield className="w-[18px] h-[18px]" />
-            Admin
-          </NavLink>
-        )}
       </nav>
 
       <div className="p-4 border-t border-white/10">
@@ -132,7 +114,7 @@ export const AppLayout = () => {
         </Sheet>
         <div className="flex items-center gap-2 ml-3">
           <Activity className="w-5 h-5 text-[#6366F1]" />
-          <span className="text-sm font-bold text-white">SignalBeast Pro</span>
+          <span className="text-sm font-bold text-white">Titan Trade</span>
         </div>
         <div className="ml-auto">
           <NotificationBell />

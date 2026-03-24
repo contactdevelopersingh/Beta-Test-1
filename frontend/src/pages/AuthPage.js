@@ -59,7 +59,7 @@ export default function AuthPage() {
             <Activity className="w-5 h-5 text-white" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-white" style={{ fontFamily: 'Manrope' }}>SignalBeast Pro</h1>
+            <h1 className="text-xl font-bold text-white" style={{ fontFamily: 'Manrope' }}>Titan Trade</h1>
             <p className="text-xs text-white/40">Trading Intelligence Platform</p>
           </div>
         </div>
