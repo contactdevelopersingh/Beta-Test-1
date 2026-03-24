@@ -1,125 +1,151 @@
 {
-  "brand_identity": {
-    "name": "SignalBeast Pro",
-    "voice": "Institutional, Precision, Aggressive, Wealth-Focused",
-    "theme_mode": "dark",
-    "emotional_archetype": "The Performance Pro (Cyber-Finance Variant)"
+  "project_name": "SignalBeast Pro",
+  "version": "2.0",
+  "design_philosophy": {
+    "identity": "The Anti-AI Designer (E1)",
+    "core_concept": "Institutional Grade Finance meets Cyberpunk Precision",
+    "emotional_tone": "Dominant, Precise, High-Frequency, Elite",
+    "visual_archetype": "The Performance Pro (Dark Mode Exclusive)",
+    "key_principles": [
+      "Density is Luxury: Information density should be high but legible.",
+      "Neon indicates Action: Color is never decorative, it is functional signal.",
+      "Glass is Crystal: Surfaces are deep, blurry, and sharp-edged.",
+      "Motion is Data: Animations should feel like live data feeds, not bounces."
+    ]
   },
   "typography": {
-    "headings": {
-      "family": "Manrope, sans-serif",
-      "weights": ["600", "700", "800"],
-      "usage": "Use for all page titles, section headers, and card titles. Tight tracking (-0.02em) for sizes above 24px."
+    "font_family": {
+      "heading": "Manrope, sans-serif",
+      "body": "Sora, sans-serif",
+      "mono": "JetBrains Mono, monospace"
     },
-    "body": {
-      "family": "Inter, sans-serif",
-      "weights": ["400", "500"],
-      "usage": "General UI text, descriptions, and long-form content. High legibility."
-    },
-    "data": {
-      "family": "JetBrains Mono, monospace",
-      "weights": ["400", "500"],
-      "usage": "Price tickers, P&L numbers, confidence scores, and tabular data."
+    "usage_rules": {
+      "headings": {
+        "weight": "800",
+        "tracking": "-0.02em",
+        "transform": "uppercase",
+        "utility_classes": "font-heading font-extrabold tracking-tight uppercase"
+      },
+      "body": {
+        "weight": "400",
+        "tracking": "normal",
+        "utility_classes": "font-sans text-gray-400"
+      },
+      "data": {
+        "weight": "500",
+        "tracking": "wide",
+        "utility_classes": "font-mono tabular-nums tracking-wide"
+      },
+      "numbers": "ALWAYS use JetBrains Mono for prices, percentages, and trade values."
     }
   },
   "colors": {
-    "background": {
-      "default": "#050505",
-      "paper": "#09090B",
-      "surface": "#121214"
-    },
-    "primary": {
-      "default": "#6366F1",
-      "hover": "#4F46E5",
-      "foreground": "#FFFFFF",
-      "glow": "0 0 20px rgba(99, 102, 241, 0.5)"
-    },
-    "signal": {
-      "buy": "#00FF94",
-      "sell": "#FF2E2E",
-      "neutral": "#94A3B8"
-    },
-    "text": {
-      "primary": "#FFFFFF",
-      "secondary": "#A1A1AA",
-      "muted": "#52525B"
-    },
-    "border": {
-      "default": "rgba(255, 255, 255, 0.1)",
-      "active": "rgba(99, 102, 241, 0.5)"
-    }
-  },
-  "visual_enhancers": {
-    "glassmorphism": {
-      "panel": "backdrop-filter: blur(12px); background: rgba(9, 9, 11, 0.7); border: 1px solid rgba(255, 255, 255, 0.08);",
-      "overlay": "backdrop-filter: blur(8px); background: rgba(0, 0, 0, 0.8);"
+    "palette": {
+      "background": {
+        "base": "#050505",
+        "surface": "#0A0A0F",
+        "surface_highlight": "#12121A"
+      },
+      "brand": {
+        "red": "#FF2D2D",
+        "green": "#00FFB2",
+        "gold": "#FFD700",
+        "indigo": "#6366F1"
+      },
+      "text": {
+        "primary": "#FFFFFF",
+        "secondary": "#94A3B8",
+        "muted": "#475569"
+      },
+      "status": {
+        "buy": "#00FFB2",
+        "sell": "#FF2D2D",
+        "neutral": "#94A3B8",
+        "premium": "#FFD700"
+      }
     },
     "gradients": {
       "hero_glow": "radial-gradient(circle at 50% 0%, rgba(99, 102, 241, 0.15) 0%, rgba(5, 5, 5, 0) 70%)",
-      "card_hover": "linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0) 100%)"
+      "glass_surface": "linear-gradient(180deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.01) 100%)",
+      "neon_border_green": "linear-gradient(90deg, transparent, #00FFB2, transparent)",
+      "neon_border_red": "linear-gradient(90deg, transparent, #FF2D2D, transparent)"
     },
-    "shadows": {
-      "neon_blue": "0 0 10px rgba(99, 102, 241, 0.3)",
-      "neon_green": "0 0 10px rgba(0, 255, 148, 0.3)"
-    }
+    "forbidden_colors": [
+      "#7351B7",
+      "#1B93A4"
+    ]
   },
-  "component_guidelines": {
+  "layout_and_spacing": {
+    "grid_system": {
+      "dashboard": "Mode B: High Density. Use grid-cols-12. Gap-4. Full height children.",
+      "landing": "Mode A: The Tetris Grid. Asymmetrical. Gap-8 to Gap-12."
+    },
+    "spacing_scale": "p-1, p-2, p-4, p-6, p-8, p-12, p-16, p-24, p-32",
+    "container_rules": "All bordered containers must have internal padding (p-6) to prevent text collision."
+  },
+  "components": {
     "buttons": {
-      "primary": "bg-primary text-white hover:bg-primary/90 shadow-[0_0_15px_rgba(99,102,241,0.4)] rounded-md font-semibold tracking-wide uppercase text-xs transition-all active:scale-95",
-      "secondary": "bg-transparent border border-white/20 text-white hover:bg-white/5 hover:border-white/40 rounded-md font-medium text-xs transition-all",
-      "danger": "bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500/20"
+      "style": "Sharp edges or minimal rounded-sm (2px). Technical look.",
+      "primary": "bg-indigo-600 hover:bg-indigo-500 text-white shadow-[0_0_15px_rgba(99,102,241,0.5)] font-mono uppercase tracking-wider",
+      "danger": "bg-red-600/10 border border-red-500 text-red-500 hover:bg-red-600 hover:text-white transition-all duration-300 font-mono",
+      "success": "bg-green-500/10 border border-green-400 text-green-400 hover:bg-green-500 hover:text-black transition-all duration-300 font-mono"
     },
     "cards": {
-      "style": "bg-[#09090B]/80 backdrop-blur-md border border-white/10 rounded-lg",
-      "hover": "hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5 transition-all duration-300"
+      "style": "Glassmorphism or Technical Grid Border.",
+      "glass": "bg-black/40 backdrop-blur-xl border border-white/10 shadow-xl",
+      "tech": "bg-[#0A0A0F] border border-white/5 relative overflow-hidden"
     },
     "inputs": {
-      "style": "bg-black/50 border-white/10 focus:border-primary focus:ring-1 focus:ring-primary rounded-md text-sm font-data"
-    },
-    "charts": {
-      "library": "Recharts (via Shadcn Charts)",
-      "style": "Minimal axes, gradient fills for areas, thin stroke lines (1.5px). Tooltips must be dark glassmorphism."
+      "style": "bg-white/5 border border-white/10 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50 rounded-sm font-mono text-sm"
     }
   },
-  "layout_strategy": {
-    "container": "max-w-7xl mx-auto px-4 sm:px-6 lg:px-8",
-    "dashboard_grid": "grid grid-cols-1 md:grid-cols-12 gap-4 md:gap-6",
-    "spacing": "Use comfortable spacing (gap-6, p-6) for breathing room, but compact density for data tables."
+  "visual_enhancers": {
+    "effects": [
+      {
+        "name": "Tracing Beam",
+        "description": "Moving gradient border for active cards.",
+        "css_class": "relative before:absolute before:inset-0 before:p-[1px] before:bg-gradient-to-r before:from-transparent before:via-indigo-500 before:to-transparent before:content-[''] before:animate-border-trace"
+      },
+      {
+        "name": "Crystal Glass",
+        "description": "High saturation blur for headers.",
+        "css_class": "backdrop-blur-xl backdrop-saturate-150 bg-black/70 border-b border-white/10"
+      },
+      {
+        "name": "Neon Text Shadow",
+        "description": "For critical numbers.",
+        "css_class": "drop-shadow-[0_0_8px_rgba(0,255,178,0.5)]"
+      }
+    ],
+    "animations": {
+      "hover": "transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-lg",
+      "loading": "animate-pulse-fast",
+      "micro": "active:scale-95 transition-transform"
+    }
   },
-  "image_urls": {
-    "landing_hero_bg": "https://images.unsplash.com/photo-1762279389006-43963a0cee55?crop=entropy&cs=srgb&fm=jpg&q=85",
-    "platform_showcase": "https://images.pexels.com/photos/5833752/pexels-photo-5833752.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
-    "ai_feature_abstract": "https://images.unsplash.com/photo-1771793231904-a516cd3baff4?crop=entropy&cs=srgb&fm=jpg&q=85",
-    "crypto_assets": "https://images.pexels.com/photos/844124/pexels-photo-844124.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
-    "testimonial_user": "https://images.pexels.com/photos/6918658/pexels-photo-6918658.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940"
+  "assets": {
+    "icons_library": "lucide-react (primary), @radix-ui/react-icons (secondary)",
+    "image_urls": {
+      "hero_background": "https://images.unsplash.com/photo-1642751226315-e6dc6b47fd54?crop=entropy&cs=srgb&fm=jpg&q=85",
+      "ai_visualization": "https://images.unsplash.com/photo-1768327239584-e97d004f1830?crop=entropy&cs=srgb&fm=jpg&q=85",
+      "trading_chart_bg": "https://images.unsplash.com/photo-1639825752750-5061ded5503b?crop=entropy&cs=srgb&fm=jpg&q=85",
+      "abstract_neon": "https://images.unsplash.com/photo-1602731465517-820d34d5a9c3?crop=entropy&cs=srgb&fm=jpg&q=85"
+    }
   },
-  "motion_guidelines": {
-    "transitions": "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
-    "micro_interactions": "Buttons scale down slightly on click (active:scale-95). Cards lift slightly on hover (-translate-y-1).",
-    "loading": "Use skeleton loaders with a shimmer effect (bg-white/5 to bg-white/10)."
-  },
-  "instructions_to_main_agent": [
-    "FORCE DARK MODE: Ensure the html tag has class='dark' by default.",
-    "Do not use gradients for text colors. Keep text solid white or grey for readability against dark backgrounds.",
-    "Use 'lucide-react' for all icons.",
-    "Implement a 'Ticker Tape' marquee at the top of the dashboard for live crypto prices.",
-    "For the 'Beast AI' chat, use a distinct purple/indigo accent to differentiate it from the trading tools.",
-    "Ensure all data tables have sticky headers and row hover effects (bg-white/5).",
-    "Use 'Sonner' for notifications (e.g., 'Signal Executed', 'Watchlist Updated').",
-    "On the landing page, use the 'landing_hero_bg' with a heavy dark overlay (bg-black/80) so text pops."
+  "universal_guidelines": [
+    "NEVER use gradients for dark backgrounds. Use solid dark colors with noise or subtle radial glows.",
+    "Text contrast MUST meet WCAG AA (4.5:1). Avoid dark grey text on black backgrounds.",
+    "Use 'data-testid' for ALL interactive elements.",
+    "Do not use generic 'Inter' font for headings.",
+    "Ensure 'Made with Emergent' branding remains hidden.",
+    "Use 'sonner' for toast notifications.",
+    "Use 'recharts' for data visualization with custom neon stroke colors."
   ],
-  "UNIVERSAL_GUIDELINES_FOR_MAIN_AGENT": [
-    "Don't make generic centered layouts, simplistic gradients, and uniform styling.",
-    "Create depth through layered design elements with z-index hierarchy.",
-    "Use glass-morphism effects with backdrop filters (12-24px blur).",
-    "You MUST NOT apply universal transition. Eg: transition: all. This results in breaking transforms. Always add transitions for specific interactive elements like button, input excluding transforms.",
-    "You MUST NOT center align the app container, ie do not add .App { text-align: center; } in the css file. This disrupts the human natural reading flow of text.",
-    "Always use modern button styles like pill-shaped, or sharp button with interaction animations & color relevant to the app style.",
-    "NEVER: use AI assistant Emoji characters like 🤖🧠 etc for icons.",
-    "Every interaction needs micro-animations - hover states, transitions, parallax effects, and entrance animations. Static = dead.",
-    "Use 2-3x more spacing than feels comfortable. Cramped designs look cheap.",
-    "Components MUST use named exports (export const ComponentName = ...).",
-    "Pages MUST use default exports (export default function PageName() {...}).",
-    "Use 'sonner' for toasts. Sonner component are located in /app/src/components/ui/sonner.tsx."
-  ]
+  "instructions_to_main_agent": {
+    "general": "You are building the UI for 'SignalBeast Pro'. It is a serious tool for traders. Do not make it look like a toy. Use the provided colors and fonts strictly.",
+    "dashboard_implementation": "The dashboard must be dense. Use the 'Bento Grid' strategy. Use real-time data simulation visuals (flashing prices).",
+    "signals_page": "Highlight 'Buy' signals with Green neon glow and 'Sell' with Red neon glow. Use the 'Tracing Beam' effect on the highest confidence signal.",
+    "charts": "Use the 'TradingView' style. Dark background, Green/Red candles, no grid lines, minimal axes.",
+    "journal": "Use a clean table layout with 'JetBrains Mono' for all numerical entries."
+  }
 }
