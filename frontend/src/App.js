@@ -16,6 +16,9 @@ import ChartPage from './pages/ChartPage';
 import StrategyPage from './pages/StrategyPage';
 import ChatPage from './pages/ChatPage';
 import SettingsPage from './pages/SettingsPage';
+import JournalPage from './pages/JournalPage';
+import AdminPage from './pages/AdminPage';
+import PricingPage from './pages/PricingPage';
 
 function AppRouter() {
   const location = useLocation();
@@ -42,6 +45,9 @@ function AppRouter() {
         <Route path="/chart/:assetType/:assetId" element={<ChartPage />} />
         <Route path="/strategy" element={<StrategyPage />} />
         <Route path="/chat" element={<ChatPage />} />
+        <Route path="/journal" element={<JournalPage />} />
+        <Route path="/admin" element={<AdminPage />} />
+        <Route path="/pricing" element={<PricingPage />} />
         <Route path="/settings" element={<SettingsPage />} />
       </Route>
     </Routes>

@@ -5,7 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
-import { Zap, Target, ShieldAlert, TrendingUp, TrendingDown, Clock, Loader2, CheckCircle2, XCircle, BarChart3 } from 'lucide-react';
+import { Input } from '../components/ui/input';
+import { Zap, Target, ShieldAlert, TrendingUp, TrendingDown, Clock, Loader2, CheckCircle2, XCircle, BarChart3, Layers, Brain, Crosshair, Timer, AlertTriangle, ChevronDown, ChevronUp } from 'lucide-react';
 import { toast } from 'sonner';
 
 const CRYPTO_ASSETS = [
@@ -35,21 +36,34 @@ const INDIAN_ASSETS = [
   { id: 'reliance', name: 'Reliance Industries' }, { id: 'tcs', name: 'TCS' },
   { id: 'infy', name: 'Infosys' }, { id: 'hdfcbank', name: 'HDFC Bank' },
   { id: 'sbin', name: 'State Bank of India' }, { id: 'icicibank', name: 'ICICI Bank' },
-  { id: 'tatamotors', name: 'Tata Motors' }, { id: 'bhartiartl', name: 'Bharti Airtel' },
+  { id: 'bhartiartl', name: 'Bharti Airtel' },
   { id: 'bajfinance', name: 'Bajaj Finance' }, { id: 'adanient', name: 'Adani Enterprises' },
 ];
 
-const TIMEFRAMES = ['5m', '15m', '1H', '4H', '1D', '1W'];
+const ALL_TIMEFRAMES = ['1m', '5m', '15m', '1H', '4H', '1D', '1W'];
+
+const STRATEGIES = [
+  { id: 'auto', name: 'Auto (Best Match)', icon: Brain },
+  { id: 'ema_crossover', name: 'EMA Crossover' },
+  { id: 'rsi_divergence', name: 'RSI Divergence' },
+  { id: 'smc', name: 'Smart Money (SMC)' },
+  { id: 'vwap', name: 'VWAP Strategy' },
+  { id: 'macd', name: 'MACD Strategy' },
+  { id: 'bollinger', name: 'Bollinger Bands' },
+  { id: 'ichimoku', name: 'Ichimoku Cloud' },
+  { id: 'fibonacci', name: 'Fibonacci Levels' },
+  { id: 'price_action', name: 'Pure Price Action' },
+];
 
 const ConfidenceRing = ({ value }) => {
   const r = 28, c = 2 * Math.PI * r;
   const color = value >= 80 ? '#00FF94' : value >= 60 ? '#6366F1' : value >= 40 ? '#EAB308' : '#FF2E2E';
   return (
-    <div className="relative w-20 h-20 flex items-center justify-center">
+    <div className="relative w-20 h-20 flex items-center justify-center flex-shrink-0">
       <svg className="w-20 h-20 -rotate-90" viewBox="0 0 64 64">
         <circle cx="32" cy="32" r={r} fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="4" />
         <circle cx="32" cy="32" r={r} fill="none" stroke={color} strokeWidth="4" strokeLinecap="round"
-          strokeDasharray={`${(value/100)*c} ${c}`} className="confidence-ring" />
+          strokeDasharray={`${(value/100)*c} ${c}`} style={{ transition: 'stroke-dasharray 0.6s ease' }} />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
         <span className="text-lg font-bold font-data text-white">{value}%</span>
@@ -57,6 +71,15 @@ const ConfidenceRing = ({ value }) => {
     </div>
   );
 };
+
+const ConfluenceDots = ({ score = 0, max = 6 }) => (
+  <div className="flex gap-1 items-center">
+    {Array.from({ length: max }).map((_, i) => (
+      <div key={i} className={`w-2 h-2 rounded-full transition-all ${i < score ? 'bg-[#00FF94] shadow-[0_0_4px_#00FF94]' : 'bg-white/10'}`} />
+    ))}
+    <span className="text-[10px] text-white/40 ml-1">{score}/{max}</span>
+  </div>
+);
 
 export default function SignalsPage() {
   const { api } = useAuth();
@@ -66,19 +89,19 @@ export default function SignalsPage() {
   const [generating, setGenerating] = useState(false);
   const [assetType, setAssetType] = useState('crypto');
   const [assetId, setAssetId] = useState('bitcoin');
-  const [timeframe, setTimeframe] = useState('1D');
+  const [selectedTimeframes, setSelectedTimeframes] = useState(['15m', '1H', '4H']);
+  const [strategy, setStrategy] = useState('auto');
+  const [profitTarget, setProfitTarget] = useState('');
   const [filter, setFilter] = useState('all');
+  const [expandedSignals, setExpandedSignals] = useState({});
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   const assets = assetType === 'crypto' ? CRYPTO_ASSETS : assetType === 'forex' ? FOREX_ASSETS : INDIAN_ASSETS;
   const allPrices = [...crypto, ...forex, ...indian];
 
-  useEffect(() => {
-    fetchSignals();
-  }, []);
+  useEffect(() => { fetchSignals(); }, []);
 
-  useEffect(() => {
-    setAssetId(assets[0]?.id || '');
-  }, [assetType]);
+  useEffect(() => { setAssetId(assets[0]?.id || ''); }, [assetType]);
 
   const fetchSignals = async () => {
     try {
@@ -88,15 +111,41 @@ export default function SignalsPage() {
     setLoading(false);
   };
 
+  const toggleTimeframe = (tf) => {
+    setSelectedTimeframes(prev => {
+      if (prev.includes(tf)) {
+        if (prev.length <= 1) return prev;
+        return prev.filter(t => t !== tf);
+      }
+      return [...prev, tf];
+    });
+  };
+
+  const toggleExpanded = (id) => {
+    setExpandedSignals(prev => ({ ...prev, [id]: !prev[id] }));
+  };
+
   const generateSignal = async () => {
     const asset = assets.find(a => a.id === assetId);
     if (!asset) return;
+    if (selectedTimeframes.length < 1) {
+      toast.error('Select at least 1 timeframe');
+      return;
+    }
     setGenerating(true);
     try {
-      const res = await api.post('/signals/generate', {
-        asset_id: assetId, asset_name: asset.name,
-        asset_type: assetType, timeframe
-      });
+      const payload = {
+        asset_id: assetId,
+        asset_name: asset.name,
+        asset_type: assetType,
+        timeframe: selectedTimeframes[Math.floor(selectedTimeframes.length / 2)] || selectedTimeframes[0],
+        timeframes: selectedTimeframes,
+        strategy: strategy,
+      };
+      if (profitTarget && !isNaN(parseFloat(profitTarget))) {
+        payload.profit_target = parseFloat(profitTarget);
+      }
+      const res = await api.post('/signals/generate', payload);
       setSignals(prev => [res.data, ...prev]);
       toast.success(`Signal generated for ${asset.name}`);
     } catch (e) {
@@ -105,26 +154,30 @@ export default function SignalsPage() {
     setGenerating(false);
   };
 
+  const buyCount = signals.filter(s => s.direction === 'BUY').length;
+  const sellCount = signals.filter(s => s.direction === 'SELL').length;
+
   return (
     <div className="space-y-6" data-testid="signals-page">
       <div>
         <h1 className="text-2xl font-bold text-white" style={{ fontFamily: 'Manrope' }}>AI Trading Signals</h1>
-        <p className="text-sm text-white/40 mt-1">Generate institutional-grade signals powered by AI</p>
+        <p className="text-sm text-white/40 mt-1">Multi-timeframe institutional-grade signals with SL/TP & holding duration</p>
       </div>
 
-      {/* Generate Signal */}
+      {/* Generate Signal Card */}
       <Card className="glass-panel border-white/10 border-l-2 border-l-[#6366F1]" data-testid="signal-generator-card">
         <CardHeader className="pb-3">
           <CardTitle className="text-sm text-white/80 flex items-center gap-2">
             <Zap className="w-4 h-4 text-[#6366F1]" /> Generate New Signal
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
+          {/* Row 1: Market + Asset + Strategy */}
           <div className="flex flex-wrap items-end gap-4">
             <div>
               <label className="text-xs text-white/40 mb-1.5 block">Market</label>
               <Select value={assetType} onValueChange={setAssetType}>
-                <SelectTrigger className="w-[140px] bg-black/50 border-white/10 text-white text-sm" data-testid="market-select">
+                <SelectTrigger className="w-[130px] bg-black/50 border-white/10 text-white text-sm" data-testid="market-select">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="bg-[#09090B] border-white/10">
@@ -140,49 +193,103 @@ export default function SignalsPage() {
                 <SelectTrigger className="w-[200px] bg-black/50 border-white/10 text-white text-sm" data-testid="asset-select">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="bg-[#09090B] border-white/10">
+                <SelectContent className="bg-[#09090B] border-white/10 max-h-[300px]">
                   {assets.map(a => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
             <div>
-              <label className="text-xs text-white/40 mb-1.5 block">Timeframe</label>
-              <Select value={timeframe} onValueChange={setTimeframe}>
-                <SelectTrigger className="w-[100px] bg-black/50 border-white/10 text-white text-sm" data-testid="timeframe-select">
+              <label className="text-xs text-white/40 mb-1.5 block">Strategy</label>
+              <Select value={strategy} onValueChange={setStrategy}>
+                <SelectTrigger className="w-[180px] bg-black/50 border-white/10 text-white text-sm" data-testid="strategy-select">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="bg-[#09090B] border-white/10">
-                  {TIMEFRAMES.map(tf => <SelectItem key={tf} value={tf}>{tf}</SelectItem>)}
+                  {STRATEGIES.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
-            <Button
-              className="bg-[#6366F1] hover:bg-[#4F46E5] text-white text-xs shadow-[0_0_15px_rgba(99,102,241,0.4)] active:scale-95 uppercase tracking-wide font-semibold px-6"
-              onClick={generateSignal} disabled={generating}
-              data-testid="generate-signal-btn"
-            >
-              {generating ? <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> Analyzing...</> : <><Zap className="w-3.5 h-3.5 mr-1.5" /> Generate Signal</>}
-            </Button>
           </div>
+
+          {/* Row 2: Timeframes (multi-select toggle) */}
+          <div>
+            <label className="text-xs text-white/40 mb-2 block">Timeframes (select 3+ for best confluence)</label>
+            <div className="flex flex-wrap gap-2" data-testid="timeframe-toggles">
+              {ALL_TIMEFRAMES.map(tf => (
+                <button key={tf} onClick={() => toggleTimeframe(tf)}
+                  className={`px-3 py-1.5 rounded-md text-xs font-medium border transition-all ${
+                    selectedTimeframes.includes(tf)
+                      ? 'bg-[#6366F1]/20 border-[#6366F1]/50 text-[#6366F1] shadow-[0_0_8px_rgba(99,102,241,0.2)]'
+                      : 'bg-white/5 border-white/10 text-white/40 hover:border-white/20 hover:text-white/60'
+                  }`}
+                  data-testid={`tf-${tf}`}
+                >
+                  {tf}
+                </button>
+              ))}
+              <span className="text-[10px] text-white/30 self-center ml-2">
+                {selectedTimeframes.length} selected
+              </span>
+            </div>
+          </div>
+
+          {/* Advanced options toggle */}
+          <button onClick={() => setShowAdvanced(!showAdvanced)}
+            className="text-xs text-[#6366F1]/70 hover:text-[#6366F1] flex items-center gap-1 transition-colors"
+            data-testid="advanced-toggle"
+          >
+            {showAdvanced ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+            {showAdvanced ? 'Hide' : 'Show'} Advanced Options
+          </button>
+
+          {showAdvanced && (
+            <div className="flex flex-wrap items-end gap-4 p-3 rounded-lg bg-white/[0.02] border border-white/5">
+              <div>
+                <label className="text-xs text-white/40 mb-1.5 block">Profit Target (%)</label>
+                <Input
+                  type="number" placeholder="e.g. 5"
+                  value={profitTarget} onChange={e => setProfitTarget(e.target.value)}
+                  className="w-[120px] bg-black/50 border-white/10 text-white text-sm"
+                  data-testid="profit-target-input"
+                />
+              </div>
+              <p className="text-[10px] text-white/30 self-center">
+                Set a profit target to get estimated holding duration
+              </p>
+            </div>
+          )}
+
+          {/* Generate Button */}
+          <Button
+            className="bg-[#6366F1] hover:bg-[#4F46E5] text-white text-xs shadow-[0_0_15px_rgba(99,102,241,0.4)] active:scale-95 uppercase tracking-wide font-semibold px-8 py-2.5"
+            onClick={generateSignal} disabled={generating}
+            data-testid="generate-signal-btn"
+          >
+            {generating ? (
+              <><Loader2 className="w-3.5 h-3.5 mr-2 animate-spin" /> Analyzing {selectedTimeframes.length} Timeframes...</>
+            ) : (
+              <><Zap className="w-3.5 h-3.5 mr-2" /> Generate Multi-TF Signal</>
+            )}
+          </Button>
         </CardContent>
       </Card>
 
       {/* Signal Stats & Filter */}
       {signals.length > 0 && (
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-1.5 text-xs text-white/40">
               <BarChart3 className="w-3.5 h-3.5" />
               <span className="font-data">{signals.length} signals</span>
               <span className="text-white/20">|</span>
-              <span className="font-data text-[#00FF94]">{signals.filter(s => s.direction === 'BUY').length} BUY</span>
-              <span className="font-data text-[#FF2E2E]">{signals.filter(s => s.direction === 'SELL').length} SELL</span>
+              <span className="font-data text-[#00FF94]">{buyCount} BUY</span>
+              <span className="font-data text-[#FF2E2E]">{sellCount} SELL</span>
             </div>
           </div>
           <div className="flex gap-1">
             {['all', 'BUY', 'SELL'].map(f => (
               <button key={f} onClick={() => setFilter(f)}
-                className={`px-2.5 py-1 rounded text-[10px] font-medium ${filter === f ? 'bg-[#6366F1] text-white' : 'bg-white/5 text-white/40 hover:text-white/60'}`}
+                className={`px-2.5 py-1 rounded text-[10px] font-medium transition-all ${filter === f ? 'bg-[#6366F1] text-white' : 'bg-white/5 text-white/40 hover:text-white/60'}`}
                 data-testid={`filter-${f}`}>
                 {f === 'all' ? 'All' : f}
               </button>
@@ -193,7 +300,7 @@ export default function SignalsPage() {
 
       {/* Signals List */}
       {loading ? (
-        <div className="space-y-4">{[1,2,3].map(i => <div key={i} className="h-40 rounded-xl skeleton-shimmer" />)}</div>
+        <div className="space-y-4">{[1,2,3].map(i => <div key={i} className="h-48 rounded-xl skeleton-shimmer" />)}</div>
       ) : signals.length === 0 ? (
         <Card className="glass-panel border-white/10">
           <CardContent className="py-16 text-center">
@@ -208,94 +315,201 @@ export default function SignalsPage() {
             const liveItem = allPrices.find(p => p.id === sig.asset_id);
             const currentPrice = liveItem?.price;
             const entryPrice = sig.entry_price;
-            let pnlPct = null;
-            let hitTP1 = false, hitTP2 = false, hitSL = false;
+            const isExpanded = expandedSignals[sig.signal_id];
+            let pnlPct = null, hitTP1 = false, hitTP2 = false, hitTP3 = false, hitSL = false;
             if (currentPrice && entryPrice && entryPrice > 0) {
               if (sig.direction === 'BUY') {
                 pnlPct = ((currentPrice - entryPrice) / entryPrice) * 100;
                 hitTP1 = sig.take_profit_1 && currentPrice >= sig.take_profit_1;
                 hitTP2 = sig.take_profit_2 && currentPrice >= sig.take_profit_2;
+                hitTP3 = sig.take_profit_3 && currentPrice >= sig.take_profit_3;
                 hitSL = sig.stop_loss && currentPrice <= sig.stop_loss;
               } else {
                 pnlPct = ((entryPrice - currentPrice) / entryPrice) * 100;
                 hitTP1 = sig.take_profit_1 && currentPrice <= sig.take_profit_1;
                 hitTP2 = sig.take_profit_2 && currentPrice <= sig.take_profit_2;
+                hitTP3 = sig.take_profit_3 && currentPrice <= sig.take_profit_3;
                 hitSL = sig.stop_loss && currentPrice >= sig.stop_loss;
               }
             }
             return (
-            <Card key={sig.signal_id || i} className={`glass-panel border-white/10 card-hover ${sig.direction === 'BUY' ? 'signal-card-buy' : 'signal-card-sell'}`} data-testid={`signal-card-${sig.signal_id}`}>
-              <CardContent className="p-5">
-                <div className="flex flex-col md:flex-row md:items-center gap-5">
-                  <ConfidenceRing value={sig.confidence || 0} />
-                  <div className="flex-1 space-y-3">
-                    <div className="flex items-center gap-3 flex-wrap">
-                      <h3 className="text-base font-semibold text-white">{sig.asset_name}</h3>
-                      <Badge className={`text-xs ${sig.direction === 'BUY' ? 'bg-[#00FF94]/10 text-[#00FF94] border-[#00FF94]/20' : 'bg-[#FF2E2E]/10 text-[#FF2E2E] border-[#FF2E2E]/20'}`}>
-                        {sig.direction}
-                      </Badge>
-                      <Badge variant="outline" className="text-[10px] border-[#6366F1]/30 text-[#6366F1]">Grade: {sig.grade}</Badge>
-                      <Badge variant="outline" className="text-[10px] border-white/20 text-white/50">{sig.market_condition}</Badge>
-                      {pnlPct !== null && (
-                        <Badge className={`text-[10px] ${pnlPct >= 0 ? 'bg-[#00FF94]/10 text-[#00FF94]' : 'bg-[#FF2E2E]/10 text-[#FF2E2E]'}`}>
-                          {pnlPct >= 0 ? '+' : ''}{pnlPct.toFixed(2)}% P&L
+              <Card key={sig.signal_id || i}
+                className={`glass-panel border-white/10 card-hover overflow-hidden ${sig.direction === 'BUY' ? 'signal-card-buy' : 'signal-card-sell'}`}
+                data-testid={`signal-card-${sig.signal_id}`}
+              >
+                <CardContent className="p-5">
+                  <div className="flex flex-col md:flex-row md:items-start gap-5">
+                    <ConfidenceRing value={sig.confidence || 0} />
+                    <div className="flex-1 space-y-3 min-w-0">
+                      {/* Header Row */}
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h3 className="text-base font-semibold text-white">{sig.asset_name}</h3>
+                        <Badge data-testid={`signal-direction-${sig.signal_id}`}
+                          className={`text-xs ${sig.direction === 'BUY' ? 'bg-[#00FF94]/10 text-[#00FF94] border-[#00FF94]/20' : 'bg-[#FF2E2E]/10 text-[#FF2E2E] border-[#FF2E2E]/20'}`}>
+                          {sig.direction}
                         </Badge>
+                        <Badge variant="outline" className="text-[10px] border-[#6366F1]/30 text-[#6366F1]">Grade: {sig.grade}</Badge>
+                        <Badge variant="outline" className="text-[10px] border-white/20 text-white/50">{sig.market_condition}</Badge>
+                        {sig.strategy_used && sig.strategy_used !== 'auto' && (
+                          <Badge variant="outline" className="text-[10px] border-[#FFD700]/30 text-[#FFD700]">
+                            {STRATEGIES.find(s => s.id === sig.strategy_used)?.name || sig.strategy_used}
+                          </Badge>
+                        )}
+                        {pnlPct !== null && (
+                          <Badge className={`text-[10px] ${pnlPct >= 0 ? 'bg-[#00FF94]/10 text-[#00FF94]' : 'bg-[#FF2E2E]/10 text-[#FF2E2E]'}`}>
+                            {pnlPct >= 0 ? '+' : ''}{pnlPct.toFixed(2)}% P&L
+                          </Badge>
+                        )}
+                      </div>
+
+                      {/* Meta Row: Timeframes, Duration, Confluence */}
+                      <div className="flex items-center gap-4 flex-wrap text-[10px]">
+                        {sig.timeframes_analyzed && sig.timeframes_analyzed.length > 0 && (
+                          <div className="flex items-center gap-1.5">
+                            <Layers className="w-3 h-3 text-[#6366F1]" />
+                            <span className="text-white/40">TFs:</span>
+                            <div className="flex gap-1">
+                              {sig.timeframes_analyzed.map(tf => (
+                                <span key={tf} className="px-1.5 py-0.5 rounded bg-[#6366F1]/10 text-[#6366F1] text-[9px] font-medium">{tf}</span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        {sig.holding_duration && (
+                          <div className="flex items-center gap-1">
+                            <Timer className="w-3 h-3 text-[#FFD700]" />
+                            <span className="text-white/40">Hold:</span>
+                            <span className="text-white/70 font-medium">{sig.holding_duration}</span>
+                          </div>
+                        )}
+                        {sig.confluence_score && (
+                          <div className="flex items-center gap-1">
+                            <Crosshair className="w-3 h-3 text-[#00FF94]" />
+                            <span className="text-white/40">Confluence:</span>
+                            <ConfluenceDots score={sig.confluence_score} max={6} />
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Price Levels Grid */}
+                      <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
+                        <div>
+                          <p className="text-[10px] text-white/40 flex items-center gap-1"><Target className="w-3 h-3" /> Entry</p>
+                          <p className="text-sm font-data text-white" data-testid={`entry-${sig.signal_id}`}>{entryPrice || 'N/A'}</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-white/40 flex items-center gap-1">
+                            {hitTP1 ? <CheckCircle2 className="w-3 h-3 text-[#00FF94]" /> : <TrendingUp className="w-3 h-3" />} TP1
+                          </p>
+                          <p className={`text-sm font-data ${hitTP1 ? 'text-[#00FF94] font-bold' : 'text-[#00FF94]'}`}>{sig.take_profit_1 || 'N/A'}</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-white/40 flex items-center gap-1">
+                            {hitTP2 ? <CheckCircle2 className="w-3 h-3 text-[#00FF94]" /> : <TrendingUp className="w-3 h-3" />} TP2
+                          </p>
+                          <p className={`text-sm font-data ${hitTP2 ? 'text-[#00FF94] font-bold' : 'text-[#00FF94]'}`}>{sig.take_profit_2 || 'N/A'}</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-white/40 flex items-center gap-1">
+                            {hitTP3 ? <CheckCircle2 className="w-3 h-3 text-[#00FF94]" /> : <TrendingUp className="w-3 h-3" />} TP3
+                          </p>
+                          <p className={`text-sm font-data ${hitTP3 ? 'text-[#00FF94] font-bold' : 'text-[#00FF94]/70'}`}>{sig.take_profit_3 || 'N/A'}</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-white/40 flex items-center gap-1">
+                            {hitSL ? <XCircle className="w-3 h-3 text-[#FF2E2E]" /> : <ShieldAlert className="w-3 h-3" />} Stop Loss
+                          </p>
+                          <p className={`text-sm font-data ${hitSL ? 'text-[#FF2E2E] font-bold' : 'text-[#FF2E2E]'}`}>{sig.stop_loss || 'N/A'}</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-white/40 flex items-center gap-1"><Clock className="w-3 h-3" /> R:R</p>
+                          <p className="text-sm font-data text-white">{sig.risk_reward || 'N/A'}</p>
+                        </div>
+                      </div>
+
+                      {/* Live price + TP/SL hit badges */}
+                      {currentPrice && (
+                        <div className="flex items-center gap-2 text-[10px]">
+                          <span className="text-white/30">Live:</span>
+                          <span className="font-data text-white/70">${currentPrice.toLocaleString()}</span>
+                          {hitTP1 && <Badge className="bg-[#00FF94]/10 text-[#00FF94] text-[9px]"><CheckCircle2 className="w-2.5 h-2.5 mr-0.5" />TP1</Badge>}
+                          {hitTP2 && <Badge className="bg-[#00FF94]/10 text-[#00FF94] text-[9px]"><CheckCircle2 className="w-2.5 h-2.5 mr-0.5" />TP2</Badge>}
+                          {hitTP3 && <Badge className="bg-[#00FF94]/10 text-[#00FF94] text-[9px]"><CheckCircle2 className="w-2.5 h-2.5 mr-0.5" />TP3</Badge>}
+                          {hitSL && <Badge className="bg-[#FF2E2E]/10 text-[#FF2E2E] text-[9px]"><XCircle className="w-2.5 h-2.5 mr-0.5" />SL Hit</Badge>}
+                        </div>
+                      )}
+
+                      {/* Trade Logic */}
+                      {sig.trade_logic && (
+                        <div className="p-2.5 rounded-lg bg-[#6366F1]/[0.04] border border-[#6366F1]/10">
+                          <p className="text-[10px] text-[#6366F1]/70 uppercase tracking-wider font-medium mb-1">Trade Logic</p>
+                          <p className="text-xs text-white/70">{sig.trade_logic}</p>
+                        </div>
+                      )}
+
+                      {/* Trade Reason */}
+                      {sig.trade_reason && (
+                        <div className="p-2.5 rounded-lg bg-white/[0.02] border border-white/5">
+                          <p className="text-[10px] text-white/40 uppercase tracking-wider font-medium mb-1">Signal Trigger</p>
+                          <p className="text-xs text-white/60">{sig.trade_reason}</p>
+                        </div>
+                      )}
+
+                      {/* Expand/Collapse for additional details */}
+                      <button onClick={() => toggleExpanded(sig.signal_id)}
+                        className="text-[10px] text-[#6366F1]/60 hover:text-[#6366F1] flex items-center gap-1"
+                        data-testid={`expand-${sig.signal_id}`}
+                      >
+                        {isExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                        {isExpanded ? 'Less' : 'More'} Details
+                      </button>
+
+                      {isExpanded && (
+                        <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-200">
+                          {sig.analysis && (
+                            <div className="p-2.5 rounded-lg bg-white/[0.02] border border-white/5">
+                              <p className="text-[10px] text-white/40 uppercase tracking-wider font-medium mb-1">Analysis</p>
+                              <p className="text-xs text-white/50 leading-relaxed">{sig.analysis}</p>
+                            </div>
+                          )}
+                          {sig.higher_tf_bias && (
+                            <div className="flex items-center gap-2 text-[10px]">
+                              <span className="text-white/40">Higher TF Bias:</span>
+                              <span className={`font-medium ${sig.higher_tf_bias?.toLowerCase().includes('bullish') ? 'text-[#00FF94]' : sig.higher_tf_bias?.toLowerCase().includes('bearish') ? 'text-[#FF2E2E]' : 'text-white/60'}`}>
+                                {sig.higher_tf_bias}
+                              </span>
+                            </div>
+                          )}
+                          {sig.confluence_factors && sig.confluence_factors.length > 0 && (
+                            <div>
+                              <p className="text-[10px] text-white/40 mb-1">Confluence Factors:</p>
+                              <div className="flex flex-wrap gap-1">
+                                {sig.confluence_factors.map((f, idx) => (
+                                  <span key={idx} className="px-2 py-0.5 rounded-full bg-[#6366F1]/10 text-[#6366F1] text-[9px]">{f}</span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          {sig.invalidation && (
+                            <div className="flex items-start gap-1.5 text-[10px]">
+                              <AlertTriangle className="w-3 h-3 text-[#EAB308] flex-shrink-0 mt-0.5" />
+                              <span className="text-white/40">Invalidation: <span className="text-[#EAB308]">{sig.invalidation}</span></span>
+                            </div>
+                          )}
+                          {sig.key_levels && sig.key_levels.length > 0 && (
+                            <div className="flex items-center gap-2 text-[10px] flex-wrap">
+                              <span className="text-white/40">Key Levels:</span>
+                              {sig.key_levels.map((lv, idx) => (
+                                <span key={idx} className="font-data text-white/60">{lv}</span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
                       )}
                     </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-                      <div>
-                        <p className="text-[10px] text-white/40 flex items-center gap-1"><Target className="w-3 h-3" /> Entry</p>
-                        <p className="text-sm font-data text-white">{entryPrice || 'N/A'}</p>
-                      </div>
-                      <div>
-                        <p className="text-[10px] text-white/40 flex items-center gap-1">
-                          {hitTP1 ? <CheckCircle2 className="w-3 h-3 text-[#00FF94]" /> : <TrendingUp className="w-3 h-3" />} TP1
-                        </p>
-                        <p className={`text-sm font-data ${hitTP1 ? 'text-[#00FF94] font-bold' : 'text-[#00FF94]'}`}>{sig.take_profit_1 || 'N/A'}</p>
-                      </div>
-                      <div>
-                        <p className="text-[10px] text-white/40 flex items-center gap-1">
-                          {hitTP2 ? <CheckCircle2 className="w-3 h-3 text-[#00FF94]" /> : <TrendingUp className="w-3 h-3" />} TP2
-                        </p>
-                        <p className={`text-sm font-data ${hitTP2 ? 'text-[#00FF94] font-bold' : 'text-[#00FF94]'}`}>{sig.take_profit_2 || 'N/A'}</p>
-                      </div>
-                      <div>
-                        <p className="text-[10px] text-white/40 flex items-center gap-1">
-                          {hitSL ? <XCircle className="w-3 h-3 text-[#FF2E2E]" /> : <ShieldAlert className="w-3 h-3" />} Stop Loss
-                        </p>
-                        <p className={`text-sm font-data ${hitSL ? 'text-[#FF2E2E] font-bold' : 'text-[#FF2E2E]'}`}>{sig.stop_loss || 'N/A'}</p>
-                      </div>
-                      <div>
-                        <p className="text-[10px] text-white/40 flex items-center gap-1"><Clock className="w-3 h-3" /> R:R</p>
-                        <p className="text-sm font-data text-white">{sig.risk_reward || 'N/A'}</p>
-                      </div>
-                    </div>
-                    {currentPrice && (
-                      <div className="flex items-center gap-2 text-[10px]">
-                        <span className="text-white/30">Live:</span>
-                        <span className="font-data text-white/70">${currentPrice.toLocaleString()}</span>
-                        {hitTP1 && <Badge className="bg-[#00FF94]/10 text-[#00FF94] text-[9px]"><CheckCircle2 className="w-2.5 h-2.5 mr-0.5" />TP1 Hit</Badge>}
-                        {hitTP2 && <Badge className="bg-[#00FF94]/10 text-[#00FF94] text-[9px]"><CheckCircle2 className="w-2.5 h-2.5 mr-0.5" />TP2 Hit</Badge>}
-                        {hitSL && <Badge className="bg-[#FF2E2E]/10 text-[#FF2E2E] text-[9px]"><XCircle className="w-2.5 h-2.5 mr-0.5" />SL Hit</Badge>}
-                      </div>
-                    )}
-                    {sig.trade_logic && (
-                      <div className="mt-2 p-2.5 rounded-lg bg-[#6366F1]/[0.04] border border-[#6366F1]/10">
-                        <p className="text-[10px] text-[#6366F1]/70 uppercase tracking-wider font-medium mb-1">Trade Logic</p>
-                        <p className="text-xs text-white/70">{sig.trade_logic}</p>
-                      </div>
-                    )}
-                    {sig.trade_reason && (
-                      <div className="mt-1.5 p-2.5 rounded-lg bg-white/[0.02] border border-white/5">
-                        <p className="text-[10px] text-white/40 uppercase tracking-wider font-medium mb-1">Signal Trigger</p>
-                        <p className="text-xs text-white/60">{sig.trade_reason}</p>
-                      </div>
-                    )}
-                    {sig.analysis && <p className="text-xs text-white/50 leading-relaxed mt-2">{sig.analysis}</p>}
                   </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
             );
           })}
         </div>

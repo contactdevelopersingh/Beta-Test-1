@@ -1,27 +1,32 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { NotificationBell } from './NotificationBell';
-import { LayoutDashboard, Zap, TrendingUp, PieChart, MessageSquare, Settings, LogOut, Menu, X, Activity, Bell, Layers } from 'lucide-react';
+import { LayoutDashboard, Zap, TrendingUp, PieChart, MessageSquare, Settings, LogOut, Menu, X, Activity, Bell, Layers, BookOpen, Shield, CreditCard } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from './ui/button';
 import { Avatar, AvatarFallback } from './ui/avatar';
 import { Sheet, SheetContent, SheetTrigger } from './ui/sheet';
 import { Toaster } from './ui/sonner';
 
+const ADMIN_EMAIL = "contact.developersingh@gmail.com";
+
 const navItems = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/signals', icon: Zap, label: 'Signals' },
   { to: '/markets', icon: TrendingUp, label: 'Markets' },
+  { to: '/journal', icon: BookOpen, label: 'Journal' },
   { to: '/portfolio', icon: PieChart, label: 'Portfolio' },
   { to: '/alerts', icon: Bell, label: 'Alerts' },
   { to: '/strategy', icon: Layers, label: 'Strategy' },
   { to: '/chat', icon: MessageSquare, label: 'Beast AI' },
+  { to: '/pricing', icon: CreditCard, label: 'Pricing' },
   { to: '/settings', icon: Settings, label: 'Settings' },
 ];
 
 const SidebarContent = ({ onClose }) => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const isAdmin = user?.email === ADMIN_EMAIL;
 
   const handleLogout = async () => {
     await logout();
@@ -42,7 +47,7 @@ const SidebarContent = ({ onClose }) => {
         </div>
       </div>
 
-      <nav className="flex-1 py-4 px-3 space-y-1">
+      <nav className="flex-1 py-4 px-3 space-y-1 overflow-y-auto">
         {navItems.map(({ to, icon: Icon, label }) => (
           <NavLink
             key={to}
@@ -59,6 +64,21 @@ const SidebarContent = ({ onClose }) => {
             {label}
           </NavLink>
         ))}
+        {isAdmin && (
+          <NavLink
+            to="/admin"
+            onClick={onClose}
+            className={({ isActive }) =>
+              `sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium ${
+                isActive ? 'active bg-[#FF2E2E]/10 text-[#FF2E2E]' : 'text-white/60 hover:text-white'
+              }`
+            }
+            data-testid="nav-admin"
+          >
+            <Shield className="w-[18px] h-[18px]" />
+            Admin
+          </NavLink>
+        )}
       </nav>
 
       <div className="p-4 border-t border-white/10">

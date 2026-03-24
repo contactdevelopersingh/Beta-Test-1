@@ -1,0 +1,113 @@
+{
+  "summary": "Iteration 8 - New Features Testing: Signal Strategies, Multi-TF Signals, Trade Journal, Admin Panel, Pricing Page. Backend: 15/15 tests passed (100%). Frontend: All features working correctly. All new endpoints and UI components verified.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "All pages",
+        "issues": ["'Made with Emergent' badge still visible in bottom-right corner - CSS hiding not working (badge is injected by platform at runtime)"]
+      }
+    ]
+  },
+  "passed_tests": {
+    "backend": [
+      "GET /api/signals/strategies returns 10 strategies (auto, ema_crossover, rsi_divergence, smc, vwap, macd, bollinger, ichimoku, fibonacci, price_action)",
+      "POST /api/signals/generate with multi-TF params returns enhanced signal with timeframes_analyzed, holding_duration, confluence_score, take_profit_3, strategy_used, higher_tf_bias, invalidation",
+      "GET /api/journal returns trades list",
+      "POST /api/journal creates a trade journal entry with P&L calculation",
+      "PUT /api/journal/{trade_id} updates a trade",
+      "DELETE /api/journal/{trade_id} deletes a trade",
+      "GET /api/journal/stats returns win_rate, total_pnl, emotion_breakdown, total_trades, wins, losses",
+      "GET /api/admin/stats returns platform stats (total_users, total_signals, total_trades, active_alerts, system_health)",
+      "GET /api/admin/users returns user list without passwords",
+      "GET /api/admin/system returns data feed status (OANDA active, Kraken active, yfinance active)",
+      "Non-admin user gets 403 on all admin endpoints",
+      "User registration works (test@test.com)",
+      "Admin registration/login works (contact.developersingh@gmail.com)",
+      "API health check passes",
+      "Market live data returns crypto, forex, indian"
+    ],
+    "frontend": [
+      "Login with test@test.com / test123 works",
+      "Signals page loads with data-testid='signals-page'",
+      "Signals page shows timeframe toggles (1m, 5m, 15m, 1H, 4H, 1D, 1W)",
+      "Signals page shows strategy selector with 10 strategies",
+      "Signals page shows 'Generate Multi-TF Signal' button",
+      "Signals page shows signal cards with TFs, Hold duration, Confluence dots, TP3, Trade Logic, Signal Trigger",
+      "Journal page loads with data-testid='journal-page'",
+      "Journal page shows 'Log Trade' button",
+      "Journal page shows trade form with emotion tags (Calm, Confident, Fear, Greed, FOMO, Revenge)",
+      "Journal page shows star ratings for quality",
+      "Journal page shows stats cards (Total Trades, Win Rate, Total P&L, W/L)",
+      "Pricing page loads with data-testid='pricing-page'",
+      "Pricing page shows 3 plans (Basic INR 999, Pro INR 2,499, Beast Mode INR 4,999)",
+      "Pricing page shows phone numbers +91 8102126223 and +91 8867678750",
+      "Pricing page shows WhatsApp contact link",
+      "Admin page shows 'Access Denied' for non-admin user (test@test.com)",
+      "Admin page loads for admin user (contact.developersingh@gmail.com)",
+      "Admin page shows tabs: Overview, Users, Signals, System",
+      "Admin page System tab shows Data Feeds (OANDA active, Kraken active, Yfinance active)",
+      "Admin page System tab shows Market Status (Crypto 24/7, Forex Open, Indian Closed)"
+    ]
+  },
+  "new_features_verified": {
+    "signal_strategies": {
+      "count": 10,
+      "strategies": ["auto", "ema_crossover", "rsi_divergence", "smc", "vwap", "macd", "bollinger", "ichimoku", "fibonacci", "price_action"]
+    },
+    "multi_timeframe_signals": {
+      "fields": ["timeframes_analyzed", "holding_duration", "confluence_score", "take_profit_3", "strategy_used", "higher_tf_bias", "invalidation", "trade_logic", "trade_reason"]
+    },
+    "trade_journal": {
+      "crud_operations": ["GET /journal", "POST /journal", "PUT /journal/{id}", "DELETE /journal/{id}"],
+      "stats_endpoint": "GET /journal/stats returns win_rate, total_pnl, emotion_breakdown",
+      "emotion_tags": ["calm", "confident", "fear", "greed", "fomo", "revenge"],
+      "quality_rating": "1-5 stars"
+    },
+    "admin_panel": {
+      "endpoints": ["GET /admin/stats", "GET /admin/users", "GET /admin/signals", "GET /admin/system", "DELETE /admin/users/{id}"],
+      "admin_email": "contact.developersingh@gmail.com",
+      "access_control": "403 for non-admin users"
+    },
+    "pricing_page": {
+      "plans": ["Basic (INR 999/month)", "Pro (INR 2,499/month)", "Beast Mode (INR 4,999/month)"],
+      "contact_phones": ["+91 8102126223", "+91 8867678750"],
+      "whatsapp": "Available"
+    }
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_new_features_iter8.py",
+    "/app/test_reports/pytest/pytest_results_iter8.xml"
+  ],
+  "action_items": [
+    "The 'Made with Emergent' badge is still visible - this appears to be injected by the platform at runtime and may not be controllable via CSS. Consider contacting Emergent support if removal is required."
+  ],
+  "critical_code_review_comments": [],
+  "updated_files": [
+    "/app/backend/tests/test_new_features_iter8.py",
+    "/app/frontend/src/index.css"
+  ],
+  "success_rate": {
+    "backend": "100% (15/15 tests passed)",
+    "frontend": "100% (all features working)"
+  },
+  "test_credentials": {
+    "test_user": {
+      "email": "test@test.com",
+      "password": "test123"
+    },
+    "admin_user": {
+      "email": "contact.developersingh@gmail.com",
+      "password": "admin123"
+    }
+  },
+  "seed_data_creation": "Added password to existing admin user (contact.developersingh@gmail.com) for JWT login testing",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "All new features from iteration 8 are working: 10 signal strategies, multi-TF signal generation with enhanced fields (timeframes_analyzed, holding_duration, confluence_score, TP3, higher_tf_bias, invalidation), Trade Journal CRUD with emotions/ratings/P&L, Admin Panel with stats/users/signals/system tabs, Pricing page with 3 plans and contact info. Admin user can login with contact.developersingh@gmail.com / admin123. The Emergent badge hiding CSS was updated but the badge is still visible (platform-injected)."
+}

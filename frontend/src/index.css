@@ -244,3 +244,16 @@
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.25);
 }
+
+
+/* Hide Emergent branding */
+#emergent-badge,
+[id*="emergent"],
+[class*="emergent"],
+[data-emergent],
+a[href*="emergentagent.com"]:not([href*="auth.emergentagent.com"]) {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}

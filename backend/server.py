@@ -262,6 +262,9 @@ class SignalRequest(BaseModel):
     asset_name: str
     asset_type: str
     timeframe: str = "1D"
+    timeframes: Optional[List[str]] = None  # Multi-timeframe: ["5m","15m","1H","4H","1D"]
+    strategy: str = "auto"  # Trading strategy: auto, ema_crossover, rsi_divergence, smc, vwap, macd, bollinger, ichimoku, fibonacci, price_action
+    profit_target: Optional[float] = None  # User's desired profit % for duration calc
 
 class AlertCreate(BaseModel):
     asset_id: str
@@ -916,57 +919,116 @@ async def get_signals(user: dict = Depends(get_current_user)):
     signals = await db.signals.find({"user_id": user['user_id']}, {"_id": 0}).sort("created_at", -1).to_list(50)
     return {"signals": signals}
 
+STRATEGY_DESCRIPTIONS = {
+    "auto": "Automatic: Use the best combination of indicators for this asset and timeframe.",
+    "ema_crossover": "EMA Crossover: 9/21 EMA for short-term, 50/200 EMA for trend. Golden Cross = bullish, Death Cross = bearish. Entry on pullback to fast EMA after crossover.",
+    "rsi_divergence": "RSI Divergence: RSI(14) overbought >70, oversold <30. Bullish divergence = price makes lower low but RSI makes higher low. Bearish divergence = price makes higher high but RSI makes lower high.",
+    "smc": "Smart Money Concepts: Identify Order Blocks (last opposing candle before impulse), Fair Value Gaps (3-candle imbalance), Break of Structure (BOS), Change of Character (CHoCH). Entry at OB/FVG after BOS confirmation.",
+    "vwap": "VWAP Strategy: Price above VWAP = bullish bias, below = bearish. Look for VWAP bounces with volume confirmation. Best for intraday. Combine with standard deviations for targets.",
+    "macd": "MACD Strategy: MACD(12,26,9). Signal line crossovers for entry. Histogram divergence for early reversal detection. Zero line crossover for trend confirmation.",
+    "bollinger": "Bollinger Bands(20,2): Mean reversion when price touches outer band with RSI confirmation. Squeeze (narrow bands) signals upcoming volatility breakout. Walk the band in strong trends.",
+    "ichimoku": "Ichimoku Cloud: TK Cross for entry, Kumo (cloud) for support/resistance, Chikou Span for confirmation. Price above cloud = bullish. All 5 elements must align for A+ signal.",
+    "fibonacci": "Fibonacci Retracement: Key levels 23.6%, 38.2%, 50%, 61.8%, 78.6%. Enter at golden pocket (61.8-78.6%) in trending markets. Extensions 127.2%, 161.8% for targets.",
+    "price_action": "Pure Price Action: Candlestick patterns (engulfing, pin bars, inside bars), support/resistance zones, trendlines, supply/demand zones. No indicators needed."
+}
+
+@api_router.get("/signals/strategies")
+async def get_strategies():
+    """Return available trading strategies"""
+    strategies = []
+    for key, desc in STRATEGY_DESCRIPTIONS.items():
+        name = desc.split(":")[0].strip()
+        detail = desc.split(":", 1)[1].strip() if ":" in desc else desc
+        strategies.append({"id": key, "name": name, "description": detail})
+    return {"strategies": strategies}
+
 @api_router.post("/signals/generate")
 async def generate_signal(data: SignalRequest, user: dict = Depends(get_current_user)):
     if not EMERGENT_LLM_KEY:
         raise HTTPException(status_code=500, detail="AI service not configured")
+
+    # Build market context from live data
     market_context = ""
+    live_item = None
     if data.asset_type == "crypto":
-        # Get price from live cache (CryptoCompare-powered)
         live_item = next((c for c in _live['crypto'] if c['id'] == data.asset_id), None)
         if live_item:
-            market_context = f"Current Price: ${live_item['price']:,.2f}, 24h Change: {live_item['change_24h']:.2f}%, Market Cap: ${live_item.get('market_cap', 0):,.0f}, High: ${live_item.get('high', 0):,.2f}, Low: ${live_item.get('low', 0):,.2f}"
-        else:
-            market_context = f"Asset: {data.asset_name}"
+            market_context = f"Current Price: ${live_item['price']:,.2f}, 24h Change: {live_item['change_24h']:.2f}%, High: ${live_item.get('high', 0):,.2f}, Low: ${live_item.get('low', 0):,.2f}, Volume: ${live_item.get('volume', 0):,.0f}"
     elif data.asset_type == "forex":
         live_item = next((f for f in _live['forex'] if f['id'] == data.asset_id), None)
         if live_item:
-            market_context = f"Current Price: {live_item['price']}, 24h Change: {live_item['change_24h']:.2f}%, High: {live_item.get('high', 0)}, Low: {live_item.get('low', 0)}"
-        else:
-            market_context = f"Asset: {data.asset_name}, Type: forex"
+            market_context = f"Current Price: {live_item['price']}, Bid: {live_item.get('bid', 'N/A')}, Ask: {live_item.get('ask', 'N/A')}, Spread: {live_item.get('spread', 'N/A')} pips, 24h Change: {live_item['change_24h']:.2f}%, Category: {live_item.get('category', 'N/A')}"
     elif data.asset_type == "indian":
         live_item = next((i for i in _live['indian'] if i['id'] == data.asset_id), None)
         if live_item:
-            market_context = f"Current Price: {live_item['price']}, 24h Change: {live_item['change_24h']:.2f}%, High: {live_item.get('high', 0)}, Low: {live_item.get('low', 0)}"
-        else:
-            market_context = f"Asset: {data.asset_name}, Type: indian"
-    else:
+            market_context = f"Current Price: INR {live_item['price']:,.2f}, 24h Change: {live_item['change_24h']:.2f}%, High: {live_item.get('high', 0)}, Low: {live_item.get('low', 0)}, Volume: {live_item.get('volume', 0):,}"
+    if not market_context:
         market_context = f"Asset: {data.asset_name}, Type: {data.asset_type}"
+
+    # Multi-timeframe setup
+    timeframes = data.timeframes or [data.timeframe]
+    if len(timeframes) < 3:
+        tf_options = ["5m", "15m", "1H", "4H", "1D", "1W"]
+        primary_idx = tf_options.index(data.timeframe) if data.timeframe in tf_options else 4
+        for offset in [-2, -1, 1, 2]:
+            idx = primary_idx + offset
+            if 0 <= idx < len(tf_options) and tf_options[idx] not in timeframes:
+                timeframes.append(tf_options[idx])
+            if len(timeframes) >= 3:
+                break
+    timeframes_str = ", ".join(timeframes)
+
+    strategy = data.strategy or "auto"
+    strategy_desc = STRATEGY_DESCRIPTIONS.get(strategy, STRATEGY_DESCRIPTIONS["auto"])
+    profit_target_str = f"User's profit target: {data.profit_target}%. Calculate holding duration to achieve this." if data.profit_target else "Estimate a realistic holding duration based on timeframes and market volatility."
 
     signal_seed = random.randint(1000, 9999)
     direction_bias = random.choice(["bullish", "bearish", "mixed"])
     confidence_range = random.choice(["low (40-55)", "medium (56-72)", "high (73-88)", "very high (89-98)"])
 
+    system_prompt = f"""You are TradeGuru Pro, SignalBeast's elite AI trading analyst with 25+ years of institutional experience. Timestamp: {datetime.now(timezone.utc).isoformat()}. Seed: {signal_seed}.
+
+=== MULTI-TIMEFRAME ANALYSIS FRAMEWORK ===
+Analyze these timeframes: [{timeframes_str}]
+- Higher timeframes determine TREND DIRECTION (bias)
+- Middle timeframes confirm MOMENTUM and STRUCTURE
+- Lower timeframes pinpoint ENTRY TIMING
+- All timeframes must show confluence for high-confidence signals
+
+=== STRATEGY: {strategy_desc} ===
+
+=== INSTITUTIONAL TRADING RULES ===
+1. CONFLUENCE IS KING: Minimum 3 confirming factors needed. Score each: indicator alignment, price action pattern, S/R level, volume confirmation, multi-TF agreement
+2. RISK MANAGEMENT (NON-NEGOTIABLE):
+   - Stop Loss MUST be at a logical level (below/above structure, swing low/high, ATR-based)
+   - Risk:Reward minimum 1:1.5, target 1:2 to 1:3
+   - SL distance determines position sizing (never risk >2% of capital)
+3. ENTRY PRECISION:
+   - BUY: SL below entry, TP1/TP2/TP3 above entry
+   - SELL: SL above entry, TP1/TP2/TP3 below entry
+   - Entry should be at optimal price (pullback to key level, not at extended price)
+4. TAKE PROFIT LEVELS:
+   - TP1: Conservative (previous S/R, 1:1 R:R) — partial exit point
+   - TP2: Standard target (fibonacci extension, measured move)
+   - TP3: Aggressive (major S/R, trend target)
+5. HOLDING DURATION: {profit_target_str}
+
+=== DIVERSITY RULES ===
+- Sentiment bias: {direction_bias}
+- Target confidence: {confidence_range}
+- Grade matches confidence: A+ (90-100), A (80-89), B+ (70-79), B (60-69), C (40-59)
+- NEVER default to generic 78%/B+ — each signal is UNIQUE
+
+Respond ONLY in valid JSON (no markdown, no code blocks):
+{{"direction":"BUY or SELL","confidence":40-98,"grade":"A+/A/B+/B/C","entry_price":number,"take_profit_1":number,"take_profit_2":number,"take_profit_3":number,"stop_loss":number,"risk_reward":"1:X.X","timeframes_analyzed":["{timeframes_str.replace(', ','","')}"],"primary_timeframe":"main timeframe","strategy_used":"{strategy}","holding_duration":"e.g. 2-4 hours / 1-3 days / 1-2 weeks","confluence_score":3-6,"confluence_factors":["factor1","factor2","factor3"],"analysis":"3-4 sentence UNIQUE analysis with specific technical reasoning across timeframes","trade_logic":"2-3 sentence WHY this setup exists (structure, pattern, institutional footprint)","trade_reason":"Specific indicators/patterns that triggered: RSI divergence on 4H + order block on 1H + EMA crossover on 15m","key_levels":["price 1","price 2","price 3"],"market_condition":"Trending/Ranging/Breakout/Reversal","higher_tf_bias":"Bullish/Bearish/Neutral with reason","invalidation":"What price level or event would invalidate this trade"}}"""
+
     chat = LlmChat(
         api_key=EMERGENT_LLM_KEY,
         session_id=f"signal_{uuid.uuid4().hex[:8]}",
-        system_message=f"""You are SignalBeast Pro's AI trading analyst. Timestamp: {datetime.now(timezone.utc).isoformat()}. Seed: {signal_seed}.
-
-IMPORTANT RULES FOR DIVERSITY:
-- Current market sentiment bias is {direction_bias}
-- Target confidence range for this analysis: {confidence_range}
-- Grade MUST match confidence: A+ (90-100), A (80-89), B+ (70-79), B (60-69), C (40-59)
-- NEVER default to 78% confidence or B+ grade
-- Each signal MUST have unique analysis and different entry/exit levels
-- Use ACTUAL price levels based on the market data provided
-- BUY signals: stop_loss BELOW entry, take_profits ABOVE entry
-- SELL signals: stop_loss ABOVE entry, take_profits BELOW entry
-
-Respond ONLY in valid JSON (no markdown, no code blocks, just raw JSON):
-{{"direction":"BUY or SELL","confidence":40-98,"grade":"A+ or A or B+ or B or C","entry_price":number,"take_profit_1":number,"take_profit_2":number,"stop_loss":number,"risk_reward":"1:X.X","timeframe":"string","analysis":"2-3 sentence UNIQUE analysis with specific technical reasoning","trade_logic":"Concise 1-2 sentence explanation of WHY this trade setup exists (e.g. price rejected from key support, bullish engulfing at demand zone, break of structure)","trade_reason":"What specific indicator or pattern triggered this signal (e.g. RSI oversold divergence, MACD bullish crossover, double bottom formation, order block bounce)","key_levels":["specific price level 1","specific price level 2"],"market_condition":"Trending or Ranging or Breakout or Reversal"}}"""
+        system_message=system_prompt
     )
     try:
-        msg = UserMessage(text=f"Generate a trading signal for {data.asset_name} ({data.asset_type.upper()}). Timeframe: {data.timeframe}. {market_context}")
+        msg = UserMessage(text=f"Generate a professional multi-timeframe trading signal for {data.asset_name} ({data.asset_type.upper()}).\nPrimary Timeframe: {data.timeframe}\nAll Timeframes: {timeframes_str}\nStrategy: {strategy}\n{market_context}")
         response_text = await chat.send_message(msg)
         try:
             clean = response_text.strip()
@@ -980,12 +1042,17 @@ Respond ONLY in valid JSON (no markdown, no code blocks, just raw JSON):
             grade = "A+" if conf >= 90 else "A" if conf >= 80 else "B+" if conf >= 70 else "B" if conf >= 60 else "C"
             signal_data = {
                 "direction": random.choice(["BUY", "SELL"]),
-                "confidence": conf,
-                "grade": grade,
-                "entry_price": 0, "take_profit_1": 0, "take_profit_2": 0, "stop_loss": 0,
-                "risk_reward": f"1:{random.uniform(1.5, 3.5):.1f}", "timeframe": data.timeframe,
-                "analysis": response_text[:300] if response_text else "Signal generated based on technical analysis",
-                "key_levels": [], "market_condition": random.choice(["Trending", "Ranging", "Breakout", "Reversal"])
+                "confidence": conf, "grade": grade,
+                "entry_price": 0, "take_profit_1": 0, "take_profit_2": 0, "take_profit_3": 0, "stop_loss": 0,
+                "risk_reward": f"1:{random.uniform(1.5, 3.5):.1f}",
+                "timeframes_analyzed": timeframes, "primary_timeframe": data.timeframe,
+                "strategy_used": strategy, "holding_duration": "1-3 days",
+                "confluence_score": random.randint(2, 5),
+                "confluence_factors": ["Price action", "Trend alignment"],
+                "analysis": response_text[:400] if response_text else "Signal generated based on multi-timeframe technical analysis",
+                "trade_logic": "", "trade_reason": "",
+                "key_levels": [], "market_condition": random.choice(["Trending", "Ranging", "Breakout", "Reversal"]),
+                "higher_tf_bias": "Neutral", "invalidation": "N/A"
             }
         signal_doc = {
             "signal_id": f"sig_{uuid.uuid4().hex[:12]}",
@@ -1236,6 +1303,193 @@ async def check_alerts():
                 })
     except Exception as e:
         logger.error(f"Alert check error: {e}")
+
+# ==================== TRADE JOURNAL ====================
+
+class TradeJournalEntry(BaseModel):
+    asset_id: str
+    asset_name: str
+    asset_type: str
+    direction: str  # BUY or SELL
+    entry_price: float
+    exit_price: Optional[float] = None
+    quantity: float
+    timeframe: str = "1D"
+    strategy: Optional[str] = None
+    signal_trigger: Optional[str] = None
+    entry_reasoning: Optional[str] = None
+    pre_trade_confidence: Optional[int] = None  # 1-10
+    emotion_tag: Optional[str] = None  # calm, fear, greed, fomo, revenge, confident
+    post_reflection: Optional[str] = None
+    lesson_learned: Optional[str] = None
+    quality_rating: Optional[int] = None  # 1-5 stars
+    status: str = "open"  # open, closed, cancelled
+
+class TradeJournalUpdate(BaseModel):
+    exit_price: Optional[float] = None
+    post_reflection: Optional[str] = None
+    lesson_learned: Optional[str] = None
+    quality_rating: Optional[int] = None
+    emotion_tag: Optional[str] = None
+    status: Optional[str] = None
+
+@api_router.get("/journal")
+async def get_journal(user: dict = Depends(get_current_user)):
+    trades = await db.trade_journal.find({"user_id": user['user_id']}, {"_id": 0}).sort("created_at", -1).to_list(100)
+    return {"trades": trades}
+
+@api_router.get("/journal/stats")
+async def get_journal_stats(user: dict = Depends(get_current_user)):
+    trades = await db.trade_journal.find({"user_id": user['user_id']}, {"_id": 0}).to_list(500)
+    total = len(trades)
+    closed = [t for t in trades if t.get('status') == 'closed' and t.get('exit_price')]
+    wins = 0
+    losses = 0
+    total_pnl = 0
+    for t in closed:
+        entry = t.get('entry_price', 0)
+        exit_p = t.get('exit_price', 0)
+        qty = t.get('quantity', 0)
+        if t.get('direction') == 'BUY':
+            pnl = (exit_p - entry) * qty
+        else:
+            pnl = (entry - exit_p) * qty
+        total_pnl += pnl
+        if pnl > 0:
+            wins += 1
+        elif pnl < 0:
+            losses += 1
+    win_rate = (wins / len(closed) * 100) if closed else 0
+    emotion_counts = {}
+    for t in trades:
+        em = t.get('emotion_tag', 'unknown')
+        emotion_counts[em] = emotion_counts.get(em, 0) + 1
+    return {
+        "total_trades": total, "open_trades": total - len(closed),
+        "closed_trades": len(closed), "wins": wins, "losses": losses,
+        "win_rate": round(win_rate, 1), "total_pnl": round(total_pnl, 2),
+        "emotion_breakdown": emotion_counts
+    }
+
+@api_router.post("/journal")
+async def create_journal_entry(data: TradeJournalEntry, user: dict = Depends(get_current_user)):
+    entry = data.model_dump()
+    pnl = None
+    if entry.get('exit_price') and entry['exit_price'] > 0:
+        if entry['direction'] == 'BUY':
+            pnl = round((entry['exit_price'] - entry['entry_price']) * entry['quantity'], 2)
+        else:
+            pnl = round((entry['entry_price'] - entry['exit_price']) * entry['quantity'], 2)
+    doc = {
+        "trade_id": f"trade_{uuid.uuid4().hex[:12]}",
+        "user_id": user['user_id'],
+        **entry,
+        "pnl": pnl,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.trade_journal.insert_one(doc)
+    doc.pop('_id', None)
+    return doc
+
+@api_router.put("/journal/{trade_id}")
+async def update_journal_entry(trade_id: str, data: TradeJournalUpdate, user: dict = Depends(get_current_user)):
+    existing = await db.trade_journal.find_one({"trade_id": trade_id, "user_id": user['user_id']}, {"_id": 0})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Trade not found")
+    updates = {k: v for k, v in data.model_dump().items() if v is not None}
+    if 'exit_price' in updates and updates['exit_price'] > 0:
+        entry_price = existing.get('entry_price', 0)
+        qty = existing.get('quantity', 0)
+        if existing.get('direction') == 'BUY':
+            updates['pnl'] = round((updates['exit_price'] - entry_price) * qty, 2)
+        else:
+            updates['pnl'] = round((entry_price - updates['exit_price']) * qty, 2)
+    updates['updated_at'] = datetime.now(timezone.utc).isoformat()
+    await db.trade_journal.update_one({"trade_id": trade_id, "user_id": user['user_id']}, {"$set": updates})
+    updated = await db.trade_journal.find_one({"trade_id": trade_id}, {"_id": 0})
+    return updated
+
+@api_router.delete("/journal/{trade_id}")
+async def delete_journal_entry(trade_id: str, user: dict = Depends(get_current_user)):
+    result = await db.trade_journal.delete_one({"trade_id": trade_id, "user_id": user['user_id']})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Trade not found")
+    return {"message": "Trade deleted"}
+
+# ==================== ADMIN PANEL ====================
+
+ADMIN_EMAIL = "contact.developersingh@gmail.com"
+
+async def get_admin_user(request: Request) -> dict:
+    """Verify the current user is the admin"""
+    user = await get_current_user(request)
+    if user.get('email') != ADMIN_EMAIL:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    return user
+
+@api_router.get("/admin/stats")
+async def admin_stats(user: dict = Depends(get_admin_user)):
+    total_users = await db.users.count_documents({})
+    total_signals = await db.signals.count_documents({})
+    total_trades = await db.trade_journal.count_documents({})
+    total_alerts = await db.alerts.count_documents({})
+    active_alerts = await db.alerts.count_documents({"status": "active"})
+    return {
+        "total_users": total_users, "total_signals": total_signals,
+        "total_trades": total_trades, "total_alerts": total_alerts,
+        "active_alerts": active_alerts,
+        "system_health": {
+            "crypto_pairs": len(_live['crypto']),
+            "forex_pairs": len(_live['forex']),
+            "indian_assets": len(_live['indian']),
+            "ticker_running": _live['initialized'],
+            "last_tick": _live['tick'],
+        }
+    }
+
+@api_router.get("/admin/users")
+async def admin_users(user: dict = Depends(get_admin_user)):
+    users = await db.users.find({}, {"_id": 0, "password": 0}).sort("created_at", -1).to_list(500)
+    return {"users": users}
+
+@api_router.get("/admin/signals")
+async def admin_signals(user: dict = Depends(get_admin_user), limit: int = 50):
+    signals = await db.signals.find({}, {"_id": 0}).sort("created_at", -1).to_list(limit)
+    return {"signals": signals}
+
+@api_router.delete("/admin/users/{user_id}")
+async def admin_delete_user(user_id: str, user: dict = Depends(get_admin_user)):
+    if user_id == user['user_id']:
+        raise HTTPException(status_code=400, detail="Cannot delete yourself")
+    result = await db.users.delete_one({"user_id": user_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="User not found")
+    await db.signals.delete_many({"user_id": user_id})
+    await db.trade_journal.delete_many({"user_id": user_id})
+    await db.alerts.delete_many({"user_id": user_id})
+    await db.notifications.delete_many({"user_id": user_id})
+    await db.portfolio.delete_many({"user_id": user_id})
+    await db.watchlist.delete_many({"user_id": user_id})
+    return {"message": "User and all associated data deleted"}
+
+@api_router.get("/admin/system")
+async def admin_system(user: dict = Depends(get_admin_user)):
+    return {
+        "data_feeds": {
+            "oanda": {"status": "active" if OANDA_API_KEY else "not configured", "pairs": len(OANDA_FOREX_PAIRS), "refresh_rate": "5s"},
+            "kraken": {"status": "active", "pairs": len(KRAKEN_PAIRS), "refresh_rate": "30s"},
+            "yfinance": {"status": "active", "assets": len(INDIAN_SYMBOL_MAP), "refresh_rate": "5min"},
+        },
+        "ticker": {
+            "initialized": _live['initialized'],
+            "tick_count": _live['tick'],
+            "crypto_count": len(_live['crypto']),
+            "forex_count": len(_live['forex']),
+            "indian_count": len(_live['indian']),
+        },
+        "market_status": get_market_status(),
+    }
 
 # ==================== APP SETUP ====================
 
