@@ -1,75 +1,73 @@
-# SignalBeast Pro - Product Requirements Document
+# Titan Trade - Product Requirements Document
 
 ## Overview
-AI-powered trading intelligence platform for Crypto, Forex & Indian Markets with institutional-grade signal generation.
+AI-powered trading intelligence platform for Crypto, Forex & Indian Markets (formerly SignalBeast Pro, rebranded Mar 24, 2026).
 
 ## Core Architecture
 - **Backend:** FastAPI + MongoDB (motor) + OANDA API + Kraken API + yfinance
 - **Frontend:** React + Tailwind CSS + shadcn/ui + lightweight-charts
-- **AI:** OpenAI GPT-4o via Emergent LLM Key
+- **AI:** OpenAI GPT-4o via Emergent LLM Key (branded as "Titan AI")
 - **Auth:** JWT (email/password) + Google OAuth2
 
-## Data Sources
-- **Forex (20 pairs):** OANDA API - 5s polling, bid/ask/spread
-- **Crypto (19 pairs):** Kraken API - 30s polling
-- **Indian (44 assets):** yfinance - 5min polling
+## Admin Access
+- **Email:** contact.developersingh@gmail.com
+- **Password:** admin123
+- **Route:** `/admin` (hidden from sidebar, accessible via URL only)
 
 ## Implemented Features
 
-### Phase 1 - Advanced Signal Generation (Completed: Mar 24, 2026)
-- Multi-timeframe analysis (user selects 3+ TFs: 1m, 5m, 15m, 1H, 4H, 1D, 1W)
-- 10 trading strategies: Auto, EMA Crossover, RSI Divergence, Smart Money (SMC), VWAP, MACD, Bollinger Bands, Ichimoku Cloud, Fibonacci, Price Action
-- SL, TP1, TP2, TP3 levels with every signal
-- Holding duration estimates based on profit targets
-- Confluence scoring (1-6 factors)
-- Enhanced trade logic, trade reason, invalidation level, higher TF bias
-- Risk:Reward ratio calculation
+### Rebrand: SignalBeast Pro → Titan Trade (Completed: Mar 24, 2026)
+- All UI references updated: landing page, auth, sidebar, chat, pricing, settings, footer, SEO
+- "Beast AI" → "Titan AI" throughout
+- Emergent badge hidden via CSS
+- localStorage key renamed to titan_trade_token
 
-### Phase 2 - Platform Features (Completed: Mar 24, 2026)
-- **Trade Journal:** Full CRUD, P&L tracking, emotion tags (calm/confident/fear/greed/fomo/revenge), star ratings (1-5), entry reasoning, post-trade reflection, lesson learned
-- **Admin Panel:** Stats dashboard, user management (CRUD), signal monitoring, system health/data feed status. Admin: contact.developersingh@gmail.com
-- **Pricing Page:** 3 plans (Basic INR 999, Pro INR 2,499, Beast Mode INR 4,999), monthly/yearly toggle, phone contacts (8102126223, 8867678750), WhatsApp integration
+### Plan Management System (Completed: Mar 24, 2026)
+- Admin can assign plans (free/basic/pro/titan) to users by email
+- Billing cycles: weekly (7 days) or monthly (30 days)
+- Custom duration in days or hours
+- Auto-expiry when plan duration ends
+- Admin can view/revoke user plans
+- Users can check their own plan via GET /api/user/plan
 
-### Phase 3 - UI/UX Overhaul (Completed: Mar 24, 2026)
-- Professional institutional finance dark theme
-- Redesigned landing page with markets showcase, features grid, stats bar
-- Typography: Manrope (headings), Sora (body), JetBrains Mono (data/numbers)
-- CSS animations: page-enter, stagger-item, glow-card, tracing-beam, neon-text, confidence-ring
-- Glassmorphism effects, noise overlay, neon accents
-- SEO meta tags (og:title, description, keywords, twitter:card)
-- Branding removal (CSS-based)
+### Pricing (Completed: Mar 24, 2026)
+- Weekly/Monthly toggle
+- Basic: INR 499/week, INR 1,499/month
+- Pro: INR 999/week, INR 3,499/month
+- Titan: INR 1,999/week, INR 6,999/month
+- Contact: +91 8102126223, +91 8867678750
+
+### Advanced Signal Generation (Completed: Mar 24, 2026)
+- Multi-timeframe analysis (3+ TFs: 1m, 5m, 15m, 1H, 4H, 1D, 1W)
+- 10 trading strategies
+- SL, TP1, TP2, TP3 levels
+- Holding duration estimates, confluence scoring, risk:reward
+
+### Platform Features (Completed: Mar 24, 2026)
+- Trade Journal (CRUD + emotions + star ratings + P&L)
+- Admin Panel (hidden, stats/users/plans/signals/system tabs)
+- Professional UI with animations, glassmorphism, SEO
 
 ### Previously Completed
-- JWT + Google OAuth authentication
-- Real-time market data streaming (polling)
-- Market hours awareness (open/closed status)
-- Price alert system with notifications
-- NotificationBell component
-- TradingView-style charts (lightweight-charts)
-- Portfolio page with live valuations
-- Strategy Builder page
-- Beast AI Chat
+- JWT + Google OAuth, real-time data, market hours, price alerts, notifications
+- TradingView charts, portfolio, strategy builder, Titan AI Chat
 
 ## Key API Endpoints
+- `POST /api/admin/plans/assign` - Assign plan to user by email
+- `GET /api/admin/plans` - List all plans (admin)
+- `DELETE /api/admin/plans/{user_id}` - Revoke plan (admin)
+- `GET /api/user/plan` - Get current user's plan
 - `GET /api/signals/strategies` - 10 trading strategies
 - `POST /api/signals/generate` - Multi-TF AI signal generation
-- `GET /api/journal` / `POST /api/journal` / `PUT /api/journal/{id}` / `DELETE /api/journal/{id}` - Trade journal CRUD
-- `GET /api/journal/stats` - Win rate, P&L, emotion breakdown
-- `GET /api/admin/stats` / `GET /api/admin/users` / `GET /api/admin/system` - Admin endpoints
-- `GET /api/market/live` - Real-time price data
-- `GET /api/chart/{market}/{asset_id}` - Candlestick data
+- `GET /api/journal` + CRUD - Trade journal
+- `GET /api/admin/stats|users|system` - Admin endpoints
 
 ## Database Collections
-- users, signals, trade_journal, alerts, notifications, chat_history, portfolio, watchlist
+- users, signals, trade_journal, alerts, notifications, chat_history, portfolio, watchlist, user_plans
 
-## Test Credentials
-- Test user: test@test.com / test123
-- Admin: contact.developersingh@gmail.com / admin123
-
-## Backlog (P1-P3)
-- P1: OANDA WebSocket streaming (replace 5s polling with real-time ticks)
-- P1: One-click trade execution via OANDA order API
-- P2: Advanced SEO (schema markup, sitemap, keyword optimization)
-- P2: Community features & leaderboards
-- P3: Mobile app optimization
-- P3: Multi-language support
+## Backlog
+- P1: OANDA WebSocket streaming (replace polling)
+- P1: One-click trade execution via OANDA
+- P2: Plan-based feature gating (restrict features by plan)
+- P2: Advanced SEO (schema markup, sitemap)
+- P3: Community features, leaderboards, mobile optimization
