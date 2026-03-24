@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /api/
+
+Sitemap: https://titan-ai-staging.preview.emergentagent.com/api/sitemap.xml

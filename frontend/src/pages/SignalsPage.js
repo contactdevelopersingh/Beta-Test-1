@@ -107,13 +107,21 @@ export default function SignalsPage() {
   const [filter, setFilter] = useState('all');
   const [expandedSignals, setExpandedSignals] = useState({});
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [planUsage, setPlanUsage] = useState(null);
 
   const assets = assetType === 'crypto' ? CRYPTO_ASSETS : assetType === 'forex' ? FOREX_ASSETS : INDIAN_ASSETS;
   const allPrices = [...crypto, ...forex, ...indian];
 
-  useEffect(() => { fetchSignals(); }, []);
+  useEffect(() => { fetchSignals(); fetchPlanUsage(); }, []);
 
   useEffect(() => { setAssetId(assets[0]?.id || ''); }, [assetType]);
+
+  const fetchPlanUsage = async () => {
+    try {
+      const res = await api.get('/user/plan-usage');
+      setPlanUsage(res.data);
+    } catch (e) { console.error(e); }
+  };
 
   const fetchSignals = async () => {
     try {
@@ -160,6 +168,7 @@ export default function SignalsPage() {
       const res = await api.post('/signals/generate', payload);
       setSignals(prev => [res.data, ...prev]);
       toast.success(`Signal generated for ${asset.name}`);
+      fetchPlanUsage();
     } catch (e) {
       toast.error(e.response?.data?.detail || 'Failed to generate signal');
     }
@@ -171,9 +180,19 @@ export default function SignalsPage() {
 
   return (
     <div className="space-y-6" data-testid="signals-page">
-      <div>
-        <h1 className="text-2xl font-bold text-white" style={{ fontFamily: 'Manrope' }}>AI Trading Signals</h1>
-        <p className="text-sm text-white/40 mt-1">Multi-timeframe institutional-grade signals with SL/TP & holding duration</p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+        <div>
+          <h1 className="text-2xl font-bold text-white" style={{ fontFamily: 'Manrope' }}>AI Trading Signals</h1>
+          <p className="text-sm text-white/40 mt-1">Multi-timeframe institutional-grade signals with SL/TP & holding duration</p>
+        </div>
+        {planUsage && (
+          <div className="flex items-center gap-2" data-testid="signal-usage-badge">
+            <Badge variant="outline" className="border-[#6366F1]/30 text-[#6366F1] bg-[#6366F1]/5 text-xs capitalize">{planUsage.plan_name} plan</Badge>
+            <span className="text-xs text-white/40 font-data">
+              {planUsage.limits.signals_per_day === -1 ? 'Unlimited' : `${planUsage.usage.signals_today}/${planUsage.limits.signals_per_day}`} signals today
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Generate Signal Card */}

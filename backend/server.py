@@ -952,6 +952,17 @@ async def generate_signal(data: SignalRequest, user: dict = Depends(get_current_
     if not EMERGENT_LLM_KEY:
         raise HTTPException(status_code=500, detail="AI service not configured")
 
+    # Plan-based feature gating
+    limits = await get_user_limits(user['user_id'])
+    if limits['signals_per_day'] != -1:
+        today_count = await count_today_usage(user['user_id'], 'signals')
+        if today_count >= limits['signals_per_day']:
+            raise HTTPException(status_code=429, detail=f"Daily signal limit reached ({limits['signals_per_day']}/{limits['plan_name']} plan). Upgrade for more signals.")
+    if not limits['multi_timeframe'] and data.timeframes and len(data.timeframes) > 1:
+        raise HTTPException(status_code=403, detail=f"Multi-timeframe analysis requires Pro plan or above. Current plan: {limits['plan_name']}")
+    if limits['strategies'] != "all" and data.strategy not in limits['strategies']:
+        raise HTTPException(status_code=403, detail=f"Strategy '{data.strategy}' requires a higher plan. Available: {', '.join(limits['strategies'])}")
+
     # Build market context from live data
     market_context = ""
     live_item = None
@@ -1146,6 +1157,15 @@ async def remove_from_watchlist(watchlist_id: str, user: dict = Depends(get_curr
 async def beast_chat(data: ChatMessage, user: dict = Depends(get_current_user)):
     if not EMERGENT_LLM_KEY:
         raise HTTPException(status_code=500, detail="AI service not configured")
+
+    # Plan-based feature gating
+    limits = await get_user_limits(user['user_id'])
+    if limits['chat_msgs_per_day'] != -1:
+        today_count = await count_today_usage(user['user_id'], 'chat_history')
+        user_msgs_today = today_count // 2  # roughly half are user messages
+        if user_msgs_today >= limits['chat_msgs_per_day']:
+            raise HTTPException(status_code=429, detail=f"Daily chat limit reached ({limits['chat_msgs_per_day']}/{limits['plan_name']} plan). Upgrade for more messages.")
+
     session_id = data.session_id or f"chat_{user['user_id']}_{uuid.uuid4().hex[:8]}"
 
     # Load recent history for context
@@ -1518,11 +1538,37 @@ PLAN_DURATIONS = {
 }
 
 PLAN_FEATURES = {
-    "free": ["5 AI signals/day", "Basic market data", "Single timeframe"],
-    "basic": ["5 AI signals/day", "Crypto + Forex data", "Price alerts (10)", "Trade Journal", "Single timeframe analysis"],
-    "pro": ["25 AI signals/day", "All markets (Crypto + Forex + Indian)", "Multi-timeframe analysis", "10 Strategy templates", "SL/TP & holding duration", "Titan AI Chat (100 msgs/day)", "Unlimited price alerts", "Priority support"],
-    "titan": ["Unlimited AI signals", "All markets + real-time streaming", "All timeframes + confluence scoring", "All strategies + custom strategies", "Advanced SL/TP with invalidation", "Unlimited Titan AI Chat", "Portfolio analytics + P&L tracking", "Dedicated support + early features"],
+    "free": ["3 AI signals/day", "Basic market data", "Single timeframe", "5 price alerts"],
+    "basic": ["5 AI signals/day", "Crypto + Forex data", "Price alerts (10)", "Trade Journal", "4 Strategy templates"],
+    "pro": ["25 AI signals/day", "All markets (Crypto + Forex + Indian)", "Multi-timeframe analysis", "10 Strategy templates", "SL/TP & holding duration", "Titan AI Chat (100 msgs/day)", "50 price alerts", "Priority support"],
+    "titan": ["Unlimited AI signals", "All markets + real-time streaming", "All timeframes + confluence scoring", "All strategies + custom strategies", "Advanced SL/TP with invalidation", "Unlimited Titan AI Chat", "Portfolio analytics + P&L tracking", "Trade execution", "Dedicated support + early features"],
 }
+
+PLAN_LIMITS = {
+    "free": {"signals_per_day": 3, "chat_msgs_per_day": 10, "multi_timeframe": False, "strategies": ["auto"], "alerts": 5, "trade_execution": False},
+    "basic": {"signals_per_day": 5, "chat_msgs_per_day": 50, "multi_timeframe": False, "strategies": ["auto", "ema_crossover", "rsi_divergence", "macd"], "alerts": 10, "trade_execution": False},
+    "pro": {"signals_per_day": 25, "chat_msgs_per_day": 100, "multi_timeframe": True, "strategies": "all", "alerts": 50, "trade_execution": False},
+    "titan": {"signals_per_day": -1, "chat_msgs_per_day": -1, "multi_timeframe": True, "strategies": "all", "alerts": -1, "trade_execution": True},
+}
+
+async def get_user_plan_name(user_id: str) -> str:
+    plan = await db.user_plans.find_one({"user_id": user_id}, {"_id": 0})
+    if not plan or plan.get('status') != 'active':
+        return "free"
+    now = datetime.now(timezone.utc).isoformat()
+    if plan.get('expires_at', '') < now:
+        await db.user_plans.update_one({"user_id": user_id}, {"$set": {"status": "expired"}})
+        return "free"
+    return plan.get('plan_name', 'free')
+
+async def get_user_limits(user_id: str) -> dict:
+    plan_name = await get_user_plan_name(user_id)
+    limits = PLAN_LIMITS.get(plan_name, PLAN_LIMITS['free'])
+    return {"plan_name": plan_name, **limits}
+
+async def count_today_usage(user_id: str, collection_name: str) -> int:
+    today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
+    return await db[collection_name].count_documents({"user_id": user_id, "created_at": {"$gte": today_start}})
 
 PLAN_PRICES = {
     "free": {"weekly": "Free", "monthly": "Free"},
@@ -1569,7 +1615,7 @@ def send_plan_email(to_email: str, user_name: str, plan_name: str, billing_cycle
       <ul style="margin:0;padding:0 0 0 20px;font-size:13px;line-height:1.8;">{features_html}</ul>
     </div>
     <p style="color:#6b7280;font-size:12px;line-height:1.6;margin:0;">
-      Start trading now at <a href="https://titantrade.preview.emergentagent.com/dashboard" style="color:#6366F1;text-decoration:none;">Titan Trade</a>. 
+      Start trading now at <a href="https://titan-ai-staging.preview.emergentagent.com/dashboard" style="color:#6366F1;text-decoration:none;">Titan Trade</a>. 
       For support, call <strong style="color:#d1d5db;">+91 8102126223</strong> or <strong style="color:#d1d5db;">+91 8867678750</strong>.
     </p>
   </div>
@@ -1682,12 +1728,339 @@ async def revoke_plan(user_id: str, admin: dict = Depends(get_admin_user)):
 async def get_my_plan(user: dict = Depends(get_current_user)):
     plan = await db.user_plans.find_one({"user_id": user['user_id']}, {"_id": 0})
     if not plan:
-        return {"plan_name": "free", "status": "active", "billing_cycle": "none", "expires_at": None}
+        return {"plan_name": "free", "status": "active", "billing_cycle": "none", "expires_at": None, "limits": PLAN_LIMITS['free'], "features": PLAN_FEATURES['free']}
     now = datetime.now(timezone.utc).isoformat()
     if plan.get('status') == 'active' and plan.get('expires_at', '') < now:
         plan['status'] = 'expired'
         await db.user_plans.update_one({"user_id": user['user_id']}, {"$set": {"status": "expired"}})
+    pn = plan.get('plan_name', 'free') if plan.get('status') == 'active' else 'free'
+    plan['limits'] = PLAN_LIMITS.get(pn, PLAN_LIMITS['free'])
+    plan['features'] = PLAN_FEATURES.get(pn, PLAN_FEATURES['free'])
     return plan
+
+@api_router.get("/user/plan-usage")
+async def get_plan_usage(user: dict = Depends(get_current_user)):
+    limits = await get_user_limits(user['user_id'])
+    today_signals = await count_today_usage(user['user_id'], 'signals')
+    today_chat = await count_today_usage(user['user_id'], 'chat_history')
+    total_alerts = await db.alerts.count_documents({"user_id": user['user_id'], "status": "active"})
+    return {
+        "plan_name": limits['plan_name'],
+        "limits": {
+            "signals_per_day": limits['signals_per_day'],
+            "chat_msgs_per_day": limits['chat_msgs_per_day'],
+            "alerts": limits['alerts'],
+            "multi_timeframe": limits['multi_timeframe'],
+            "trade_execution": limits.get('trade_execution', False),
+        },
+        "usage": {
+            "signals_today": today_signals,
+            "chat_msgs_today": today_chat // 2,
+            "active_alerts": total_alerts,
+        }
+    }
+
+# ==================== OANDA TRADE EXECUTION ====================
+
+class OrderRequest(BaseModel):
+    instrument: str  # e.g. EUR_USD
+    units: int  # positive=buy, negative=sell
+    order_type: str = "MARKET"  # MARKET, LIMIT, STOP
+    price: Optional[float] = None  # for LIMIT/STOP orders
+    stop_loss: Optional[float] = None
+    take_profit: Optional[float] = None
+
+@api_router.post("/trade/order")
+async def place_order(data: OrderRequest, user: dict = Depends(get_current_user)):
+    """Place a trade order via OANDA"""
+    limits = await get_user_limits(user['user_id'])
+    if not limits.get('trade_execution', False):
+        raise HTTPException(status_code=403, detail=f"Trade execution requires Titan plan. Current: {limits['plan_name']}")
+    if not OANDA_API_KEY or not OANDA_ACCOUNT_ID:
+        raise HTTPException(status_code=500, detail="OANDA trading not configured")
+
+    order_body = {
+        "order": {
+            "type": data.order_type,
+            "instrument": data.instrument,
+            "units": str(data.units),
+            "timeInForce": "FOK" if data.order_type == "MARKET" else "GTC",
+            "positionFill": "DEFAULT",
+        }
+    }
+    if data.price and data.order_type != "MARKET":
+        order_body["order"]["price"] = str(data.price)
+    if data.stop_loss:
+        order_body["order"]["stopLossOnFill"] = {"price": str(data.stop_loss)}
+    if data.take_profit:
+        order_body["order"]["takeProfitOnFill"] = {"price": str(data.take_profit)}
+
+    try:
+        async with httpx.AsyncClient(timeout=15) as client:
+            resp = await client.post(
+                f"{OANDA_BASE_URL}/accounts/{OANDA_ACCOUNT_ID}/orders",
+                headers={"Authorization": f"Bearer {OANDA_API_KEY}", "Content-Type": "application/json"},
+                json=order_body
+            )
+            result = resp.json()
+        if resp.status_code not in [200, 201]:
+            error_msg = result.get('errorMessage', str(result))
+            raise HTTPException(status_code=400, detail=f"Order rejected: {error_msg}")
+        # Log trade
+        trade_doc = {
+            "trade_id": f"exec_{uuid.uuid4().hex[:12]}",
+            "user_id": user['user_id'],
+            "instrument": data.instrument,
+            "units": data.units,
+            "order_type": data.order_type,
+            "stop_loss": data.stop_loss,
+            "take_profit": data.take_profit,
+            "oanda_response": {k: v for k, v in result.items() if k != '_id'},
+            "status": "filled" if data.order_type == "MARKET" else "pending",
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+        await db.trade_executions.insert_one(trade_doc)
+        trade_doc.pop('_id', None)
+        return {"message": "Order placed successfully", "trade": trade_doc, "oanda": result}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Order execution error: {e}")
+        raise HTTPException(status_code=500, detail=f"Trade execution failed: {str(e)}")
+
+@api_router.get("/trade/positions")
+async def get_positions(user: dict = Depends(get_current_user)):
+    """Get open positions from OANDA"""
+    if not OANDA_API_KEY or not OANDA_ACCOUNT_ID:
+        return {"positions": []}
+    try:
+        async with httpx.AsyncClient(timeout=15) as client:
+            resp = await client.get(
+                f"{OANDA_BASE_URL}/accounts/{OANDA_ACCOUNT_ID}/openPositions",
+                headers={"Authorization": f"Bearer {OANDA_API_KEY}"}
+            )
+            data = resp.json()
+        positions = []
+        for p in data.get('positions', []):
+            long_u = int(p.get('long', {}).get('units', '0'))
+            short_u = int(p.get('short', {}).get('units', '0'))
+            long_pnl = float(p.get('long', {}).get('unrealizedPL', '0'))
+            short_pnl = float(p.get('short', {}).get('unrealizedPL', '0'))
+            instrument = p.get('instrument', '')
+            meta = OANDA_FOREX_PAIRS.get(instrument, {})
+            if long_u != 0:
+                positions.append({
+                    "instrument": instrument, "name": meta.get('name', instrument),
+                    "direction": "LONG", "units": long_u,
+                    "unrealized_pnl": round(long_pnl, 2),
+                    "avg_price": float(p.get('long', {}).get('averagePrice', '0')),
+                })
+            if short_u != 0:
+                positions.append({
+                    "instrument": instrument, "name": meta.get('name', instrument),
+                    "direction": "SHORT", "units": abs(short_u),
+                    "unrealized_pnl": round(short_pnl, 2),
+                    "avg_price": float(p.get('short', {}).get('averagePrice', '0')),
+                })
+        return {"positions": positions}
+    except Exception as e:
+        logger.error(f"Get positions error: {e}")
+        return {"positions": []}
+
+@api_router.get("/trade/account")
+async def get_trading_account(user: dict = Depends(get_current_user)):
+    """Get OANDA account summary"""
+    if not OANDA_API_KEY or not OANDA_ACCOUNT_ID:
+        return {"error": "OANDA not configured"}
+    try:
+        async with httpx.AsyncClient(timeout=15) as client:
+            resp = await client.get(
+                f"{OANDA_BASE_URL}/accounts/{OANDA_ACCOUNT_ID}/summary",
+                headers={"Authorization": f"Bearer {OANDA_API_KEY}"}
+            )
+            data = resp.json()
+        acct = data.get('account', {})
+        return {
+            "balance": float(acct.get('balance', '0')),
+            "unrealized_pnl": float(acct.get('unrealizedPL', '0')),
+            "nav": float(acct.get('NAV', '0')),
+            "margin_used": float(acct.get('marginUsed', '0')),
+            "margin_available": float(acct.get('marginAvailable', '0')),
+            "open_trade_count": int(acct.get('openTradeCount', '0')),
+            "currency": acct.get('currency', 'USD'),
+        }
+    except Exception as e:
+        logger.error(f"Account summary error: {e}")
+        return {"balance": 0, "unrealized_pnl": 0, "nav": 0, "currency": "USD"}
+
+@api_router.post("/trade/close/{instrument}")
+async def close_position(instrument: str, user: dict = Depends(get_current_user)):
+    """Close all positions for an instrument"""
+    limits = await get_user_limits(user['user_id'])
+    if not limits.get('trade_execution', False):
+        raise HTTPException(status_code=403, detail="Trade execution requires Titan plan")
+    if not OANDA_API_KEY or not OANDA_ACCOUNT_ID:
+        raise HTTPException(status_code=500, detail="OANDA not configured")
+    try:
+        async with httpx.AsyncClient(timeout=15) as client:
+            resp = await client.put(
+                f"{OANDA_BASE_URL}/accounts/{OANDA_ACCOUNT_ID}/positions/{instrument}/close",
+                headers={"Authorization": f"Bearer {OANDA_API_KEY}", "Content-Type": "application/json"},
+                json={"longUnits": "ALL", "shortUnits": "ALL"}
+            )
+            result = resp.json()
+        return {"message": f"Position closed for {instrument}", "result": result}
+    except Exception as e:
+        logger.error(f"Close position error: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to close position: {str(e)}")
+
+@api_router.get("/trade/history")
+async def get_trade_history(user: dict = Depends(get_current_user)):
+    """Get user's trade execution history"""
+    trades = await db.trade_executions.find({"user_id": user['user_id']}, {"_id": 0}).sort("created_at", -1).to_list(100)
+    return {"trades": trades}
+
+# ==================== COMMUNITY & LEADERBOARD ====================
+
+@api_router.get("/community/leaderboard")
+async def get_leaderboard():
+    """Get top traders based on signal accuracy and journal performance"""
+    pipeline = [
+        {"$match": {"status": "closed", "pnl": {"$exists": True}}},
+        {"$group": {
+            "_id": "$user_id",
+            "total_trades": {"$sum": 1},
+            "total_pnl": {"$sum": "$pnl"},
+            "wins": {"$sum": {"$cond": [{"$gt": ["$pnl", 0]}, 1, 0]}},
+            "losses": {"$sum": {"$cond": [{"$lt": ["$pnl", 0]}, 1, 0]}},
+            "avg_pnl": {"$avg": "$pnl"},
+        }},
+        {"$match": {"total_trades": {"$gte": 3}}},
+        {"$sort": {"total_pnl": -1}},
+        {"$limit": 50}
+    ]
+    results = await db.trade_journal.aggregate(pipeline).to_list(50)
+
+    leaderboard = []
+    for i, r in enumerate(results):
+        user = await db.users.find_one({"user_id": r['_id']}, {"_id": 0, "password": 0})
+        if not user:
+            continue
+        win_rate = (r['wins'] / r['total_trades'] * 100) if r['total_trades'] > 0 else 0
+        # Calculate rank tier
+        tier = "bronze"
+        if r['total_pnl'] > 10000:
+            tier = "diamond"
+        elif r['total_pnl'] > 5000:
+            tier = "platinum"
+        elif r['total_pnl'] > 1000:
+            tier = "gold"
+        elif r['total_pnl'] > 0:
+            tier = "silver"
+        leaderboard.append({
+            "rank": i + 1,
+            "user_id": r['_id'],
+            "name": user.get('name', 'Trader'),
+            "avatar": user.get('name', 'T')[0].upper(),
+            "total_trades": r['total_trades'],
+            "total_pnl": round(r['total_pnl'], 2),
+            "wins": r['wins'],
+            "losses": r['losses'],
+            "win_rate": round(win_rate, 1),
+            "avg_pnl": round(r.get('avg_pnl', 0), 2),
+            "tier": tier,
+        })
+    return {"leaderboard": leaderboard}
+
+@api_router.get("/community/stats")
+async def get_community_stats():
+    """Get overall community statistics"""
+    total_users = await db.users.count_documents({})
+    total_signals = await db.signals.count_documents({})
+    total_trades = await db.trade_journal.count_documents({})
+    closed_trades = await db.trade_journal.count_documents({"status": "closed"})
+    pipeline = [
+        {"$match": {"status": "closed", "pnl": {"$exists": True, "$gt": 0}}},
+        {"$count": "wins"}
+    ]
+    win_result = await db.trade_journal.aggregate(pipeline).to_list(1)
+    total_wins = win_result[0]['wins'] if win_result else 0
+    community_win_rate = (total_wins / closed_trades * 100) if closed_trades > 0 else 0
+    return {
+        "total_traders": total_users,
+        "total_signals_generated": total_signals,
+        "total_trades_logged": total_trades,
+        "community_win_rate": round(community_win_rate, 1),
+        "active_today": await db.signals.count_documents({"created_at": {"$gte": datetime.now(timezone.utc).replace(hour=0, minute=0, second=0).isoformat()}}),
+    }
+
+@api_router.get("/community/my-stats")
+async def get_my_community_stats(user: dict = Depends(get_current_user)):
+    """Get user's community stats and badges"""
+    trades = await db.trade_journal.find({"user_id": user['user_id']}, {"_id": 0}).to_list(500)
+    signals = await db.signals.find({"user_id": user['user_id']}, {"_id": 0}).to_list(500)
+    closed = [t for t in trades if t.get('status') == 'closed' and t.get('pnl') is not None]
+    wins = sum(1 for t in closed if t['pnl'] > 0)
+    total_pnl = sum(t['pnl'] for t in closed)
+
+    # Calculate badges
+    badges = []
+    if len(trades) >= 1:
+        badges.append({"id": "first_trade", "name": "First Trade", "icon": "trophy", "earned": True})
+    if len(trades) >= 10:
+        badges.append({"id": "10_trades", "name": "Active Trader", "icon": "flame", "earned": True})
+    if len(trades) >= 50:
+        badges.append({"id": "50_trades", "name": "Veteran Trader", "icon": "star", "earned": True})
+    if wins >= 5:
+        badges.append({"id": "5_wins", "name": "Winning Streak", "icon": "zap", "earned": True})
+    if total_pnl > 1000:
+        badges.append({"id": "1k_profit", "name": "1K Club", "icon": "dollar", "earned": True})
+    if total_pnl > 10000:
+        badges.append({"id": "10k_profit", "name": "10K Club", "icon": "diamond", "earned": True})
+    if len(signals) >= 20:
+        badges.append({"id": "signal_hunter", "name": "Signal Hunter", "icon": "radar", "earned": True})
+    if len(closed) > 0 and (wins / len(closed)) >= 0.7:
+        badges.append({"id": "sharpshooter", "name": "Sharpshooter", "icon": "target", "earned": True})
+
+    # Rank on leaderboard
+    pipeline = [
+        {"$match": {"status": "closed", "pnl": {"$exists": True}}},
+        {"$group": {"_id": "$user_id", "total_pnl": {"$sum": "$pnl"}}},
+        {"$sort": {"total_pnl": -1}}
+    ]
+    all_ranks = await db.trade_journal.aggregate(pipeline).to_list(1000)
+    my_rank = 0
+    for i, r in enumerate(all_ranks):
+        if r['_id'] == user['user_id']:
+            my_rank = i + 1
+            break
+
+    return {
+        "total_trades": len(trades),
+        "closed_trades": len(closed),
+        "wins": wins,
+        "losses": len(closed) - wins,
+        "win_rate": round((wins / len(closed) * 100) if closed else 0, 1),
+        "total_pnl": round(total_pnl, 2),
+        "total_signals": len(signals),
+        "badges": badges,
+        "leaderboard_rank": my_rank,
+        "total_traders": len(all_ranks),
+    }
+
+# ==================== SEO ====================
+
+@api_router.get("/sitemap.xml")
+async def sitemap():
+    from starlette.responses import Response as StarletteResponse
+    base = "https://titan-ai-staging.preview.emergentagent.com"
+    pages = ["/", "/auth", "/dashboard", "/signals", "/markets", "/portfolio", "/chat", "/journal", "/pricing", "/settings", "/strategy", "/alerts"]
+    xml = '<?xml version="1.0" encoding="UTF-8"?>\n'
+    xml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+    for page in pages:
+        xml += f'  <url><loc>{base}{page}</loc><changefreq>daily</changefreq><priority>{"1.0" if page == "/" else "0.8"}</priority></url>\n'
+    xml += '</urlset>'
+    return StarletteResponse(content=xml, media_type="application/xml")
 
 # ==================== APP SETUP ====================
 

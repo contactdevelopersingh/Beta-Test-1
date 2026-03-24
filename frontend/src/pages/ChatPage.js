@@ -11,6 +11,7 @@ export default function ChatPage() {
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
   const [sessionId, setSessionId] = useState(null);
+  const [planUsage, setPlanUsage] = useState(null);
   const scrollRef = useRef(null);
   const inputRef = useRef(null);
 
@@ -19,6 +20,10 @@ export default function ChatPage() {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages]);
+
+  useEffect(() => {
+    api.get('/user/plan-usage').then(r => setPlanUsage(r.data)).catch(() => {});
+  }, []);
 
   const sendMessage = async () => {
     if (!input.trim() || sending) return;

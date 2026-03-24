@@ -16,7 +16,7 @@ def test_forex_live_data():
     print("🔍 Testing Forex Live Data...")
     
     try:
-        response = requests.get("https://signal-beast-pro.preview.emergentagent.com/api/market/forex", timeout=30)
+        response = requests.get("https://titan-ai-staging.preview.emergentagent.com/api/market/forex", timeout=30)
         
         if response.status_code != 200:
             print(f"❌ Forex API failed with status {response.status_code}")
@@ -64,7 +64,7 @@ def test_indian_market_data():
     print("\n🔍 Testing Indian Market Live Data...")
     
     try:
-        response = requests.get("https://signal-beast-pro.preview.emergentagent.com/api/market/indian", timeout=30)
+        response = requests.get("https://titan-ai-staging.preview.emergentagent.com/api/market/indian", timeout=30)
         
         if response.status_code != 200:
             print(f"❌ Indian market API failed with status {response.status_code}")
@@ -126,7 +126,7 @@ def test_signal_diversity():
     # First login to get token
     try:
         login_response = requests.post(
-            "https://signal-beast-pro.preview.emergentagent.com/api/auth/login",
+            "https://titan-ai-staging.preview.emergentagent.com/api/auth/login",
             json={"email": "chattest@test.com", "password": "test123"},
             timeout=30
         )
@@ -154,7 +154,7 @@ def test_signal_diversity():
         for asset in test_assets:
             try:
                 signal_response = requests.post(
-                    "https://signal-beast-pro.preview.emergentagent.com/api/signals/generate",
+                    "https://titan-ai-staging.preview.emergentagent.com/api/signals/generate",
                     json={
                         "asset_id": asset["asset_id"],
                         "asset_name": asset["asset_name"],

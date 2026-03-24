@@ -19,6 +19,8 @@ import SettingsPage from './pages/SettingsPage';
 import JournalPage from './pages/JournalPage';
 import AdminPage from './pages/AdminPage';
 import PricingPage from './pages/PricingPage';
+import LeaderboardPage from './pages/LeaderboardPage';
+import TradePage from './pages/TradePage';
 
 function AppRouter() {
   const location = useLocation();
@@ -48,6 +50,8 @@ function AppRouter() {
         <Route path="/journal" element={<JournalPage />} />
         <Route path="/admin" element={<AdminPage />} />
         <Route path="/pricing" element={<PricingPage />} />
+        <Route path="/leaderboard" element={<LeaderboardPage />} />
+        <Route path="/trade" element={<TradePage />} />
         <Route path="/settings" element={<SettingsPage />} />
       </Route>
     </Routes>
