@@ -70,7 +70,7 @@ export const NotificationBell = () => {
       >
         <Bell className="w-[18px] h-[18px]" />
         {unreadCount > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full bg-[#FF2E2E] text-[9px] text-white flex items-center justify-center font-data font-bold" data-testid="notification-badge">
+          <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full bg-[#EF4444] text-[9px] text-white flex items-center justify-center font-data font-bold" data-testid="notification-badge">
             {unreadCount > 9 ? '9+' : unreadCount}
           </span>
         )}

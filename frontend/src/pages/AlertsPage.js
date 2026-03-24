@@ -179,7 +179,7 @@ export default function AlertsPage() {
         </Card>
         <Card className="glass-panel border-white/10" data-testid="triggered-alerts-count">
           <CardContent className="p-5 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-[#00FF94]/10 flex items-center justify-center"><CheckCircle2 className="w-5 h-5 text-[#00FF94]" /></div>
+            <div className="w-10 h-10 rounded-lg bg-[#10B981]/10 flex items-center justify-center"><CheckCircle2 className="w-5 h-5 text-[#10B981]" /></div>
             <div>
               <p className="text-[10px] text-white/40 uppercase tracking-wider">Triggered</p>
               <p className="text-lg font-bold text-white font-data">{triggeredAlerts.length}</p>
@@ -218,8 +218,8 @@ export default function AlertsPage() {
                 return (
                   <div key={alert.alert_id} className="flex items-center justify-between p-3 rounded-lg bg-white/[0.02] border border-white/5 market-row" data-testid={`alert-${alert.alert_id}`}>
                     <div className="flex items-center gap-3">
-                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${alert.condition === 'above' ? 'bg-[#00FF94]/10' : 'bg-[#FF2E2E]/10'}`}>
-                        {alert.condition === 'above' ? <ArrowUp className="w-4 h-4 text-[#00FF94]" /> : <ArrowDown className="w-4 h-4 text-[#FF2E2E]" />}
+                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${alert.condition === 'above' ? 'bg-[#10B981]/10' : 'bg-[#EF4444]/10'}`}>
+                        {alert.condition === 'above' ? <ArrowUp className="w-4 h-4 text-[#10B981]" /> : <ArrowDown className="w-4 h-4 text-[#EF4444]" />}
                       </div>
                       <div>
                         <div className="flex items-center gap-2">
@@ -234,7 +234,7 @@ export default function AlertsPage() {
                         {alert.note && <p className="text-[10px] text-white/30 mt-0.5">{alert.note}</p>}
                       </div>
                     </div>
-                    <Button variant="ghost" size="icon" className="w-7 h-7 text-white/30 hover:text-[#FF2E2E]"
+                    <Button variant="ghost" size="icon" className="w-7 h-7 text-white/30 hover:text-[#EF4444]"
                       onClick={() => deleteAlert(alert.alert_id)} data-testid={`delete-alert-${alert.alert_id}`}>
                       <Trash2 className="w-3.5 h-3.5" />
                     </Button>
@@ -248,18 +248,18 @@ export default function AlertsPage() {
 
       {/* Triggered Alerts */}
       {triggeredAlerts.length > 0 && (
-        <Card className="glass-panel border-white/10 border-l-2 border-l-[#00FF94]" data-testid="triggered-alerts-list">
+        <Card className="glass-panel border-white/10 border-l-2 border-l-[#10B981]" data-testid="triggered-alerts-list">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm text-white/80 flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-[#00FF94]" /> Triggered Alerts
+              <CheckCircle2 className="w-4 h-4 text-[#10B981]" /> Triggered Alerts
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
               {triggeredAlerts.map(alert => (
-                <div key={alert.alert_id} className="flex items-center justify-between p-3 rounded-lg bg-[#00FF94]/[0.02] border border-[#00FF94]/10" data-testid={`triggered-${alert.alert_id}`}>
+                <div key={alert.alert_id} className="flex items-center justify-between p-3 rounded-lg bg-[#10B981]/[0.02] border border-[#10B981]/10" data-testid={`triggered-${alert.alert_id}`}>
                   <div className="flex items-center gap-3">
-                    <CheckCircle2 className="w-5 h-5 text-[#00FF94]" />
+                    <CheckCircle2 className="w-5 h-5 text-[#10B981]" />
                     <div>
                       <span className="text-sm text-white font-medium">{alert.asset_name}</span>
                       <p className="text-[10px] text-white/40">
@@ -268,7 +268,7 @@ export default function AlertsPage() {
                       </p>
                     </div>
                   </div>
-                  <Button variant="ghost" size="icon" className="w-7 h-7 text-white/30 hover:text-[#FF2E2E]"
+                  <Button variant="ghost" size="icon" className="w-7 h-7 text-white/30 hover:text-[#EF4444]"
                     onClick={() => deleteAlert(alert.alert_id)}>
                     <Trash2 className="w-3.5 h-3.5" />
                   </Button>

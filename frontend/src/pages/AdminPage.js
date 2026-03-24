@@ -94,7 +94,7 @@ export default function AdminPage() {
       <div className="flex items-center justify-center min-h-[60vh]" data-testid="admin-access-denied">
         <Card className="glass-panel border-white/10 max-w-md">
           <CardContent className="py-12 text-center">
-            <Shield className="w-12 h-12 text-[#FF2E2E]/30 mx-auto mb-4" />
+            <Shield className="w-12 h-12 text-[#EF4444]/30 mx-auto mb-4" />
             <h2 className="text-lg font-bold text-white mb-2">Access Denied</h2>
             <p className="text-sm text-white/40">Admin panel is restricted to authorized personnel only.</p>
           </CardContent>
@@ -119,7 +119,7 @@ export default function AdminPage() {
     <div className="space-y-6" data-testid="admin-page">
       <div>
         <h1 className="text-2xl font-bold text-white flex items-center gap-2" style={{ fontFamily: 'Manrope' }}>
-          <Shield className="w-6 h-6 text-[#FF2E2E]" /> Admin Panel
+          <Shield className="w-6 h-6 text-[#EF4444]" /> Admin Panel
         </h1>
         <p className="text-sm text-white/40 mt-1">Titan Trade platform management</p>
       </div>
@@ -130,7 +130,7 @@ export default function AdminPage() {
           <button key={tab.id} onClick={() => setActiveTab(tab.id)}
             className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-medium border-b-2 transition-all ${
               activeTab === tab.id
-                ? 'border-[#FF2E2E] text-white bg-[#FF2E2E]/5'
+                ? 'border-[#EF4444] text-white bg-[#EF4444]/5'
                 : 'border-transparent text-white/40 hover:text-white/60'
             }`}
             data-testid={`admin-tab-${tab.id}`}>
@@ -144,9 +144,9 @@ export default function AdminPage() {
         <div className="space-y-6">
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
             <StatCard label="Total Users" value={stats.total_users} icon={Users} color="#6366F1" />
-            <StatCard label="Total Signals" value={stats.total_signals} icon={Zap} color="#00FF94" />
-            <StatCard label="Total Trades" value={stats.total_trades} icon={BarChart3} color="#FFD700" />
-            <StatCard label="Active Alerts" value={stats.active_alerts} icon={Bell} color="#FF2E2E" />
+            <StatCard label="Total Signals" value={stats.total_signals} icon={Zap} color="#10B981" />
+            <StatCard label="Total Trades" value={stats.total_trades} icon={BarChart3} color="#F59E0B" />
+            <StatCard label="Active Alerts" value={stats.active_alerts} icon={Bell} color="#EF4444" />
             <StatCard label="Active Plans" value={plans.filter(p => p.status === 'active').length} icon={CreditCard} color="#00FFB2" />
           </div>
           {stats.system_health && (
@@ -170,7 +170,7 @@ export default function AdminPage() {
                   </div>
                   <div>
                     <p className="text-white/40">Ticker Status</p>
-                    <Badge className={stats.system_health.ticker_running ? 'bg-[#00FF94]/10 text-[#00FF94]' : 'bg-[#FF2E2E]/10 text-[#FF2E2E]'}>
+                    <Badge className={stats.system_health.ticker_running ? 'bg-[#10B981]/10 text-[#10B981]' : 'bg-[#EF4444]/10 text-[#EF4444]'}>
                       {stats.system_health.ticker_running ? 'Running' : 'Stopped'}
                     </Badge>
                   </div>
@@ -194,9 +194,9 @@ export default function AdminPage() {
                     <div className="flex items-center gap-2">
                       <p className="text-sm text-white font-medium">{u.name || 'Unnamed'}</p>
                       <Badge variant="outline" className="text-[9px] border-white/20 text-white/40">{u.auth_type || 'jwt'}</Badge>
-                      {u.email === ADMIN_EMAIL && <Badge className="bg-[#FF2E2E]/10 text-[#FF2E2E] text-[9px]">Admin</Badge>}
+                      {u.email === ADMIN_EMAIL && <Badge className="bg-[#EF4444]/10 text-[#EF4444] text-[9px]">Admin</Badge>}
                       {userPlan && (
-                        <Badge className="bg-[#FFD700]/10 text-[#FFD700] text-[9px] capitalize">{userPlan.plan_name}</Badge>
+                        <Badge className="bg-[#F59E0B]/10 text-[#F59E0B] text-[9px] capitalize">{userPlan.plan_name}</Badge>
                       )}
                     </div>
                     <p className="text-[10px] text-white/40">{u.email}</p>
@@ -220,10 +220,10 @@ export default function AdminPage() {
       {activeTab === 'plans' && (
         <div className="space-y-6">
           {/* Assign Plan Form */}
-          <Card className="glass-panel border-white/10 border-l-2 border-l-[#FFD700]" data-testid="assign-plan-form">
+          <Card className="glass-panel border-white/10 border-l-2 border-l-[#F59E0B]" data-testid="assign-plan-form">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm text-white/80 flex items-center gap-2">
-                <UserCheck className="w-4 h-4 text-[#FFD700]" /> Assign Plan to User
+                <UserCheck className="w-4 h-4 text-[#F59E0B]" /> Assign Plan to User
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -270,7 +270,7 @@ export default function AdminPage() {
                     placeholder="Optional" className="bg-black/50 border-white/10 text-white text-sm" data-testid="plan-hours-input" />
                 </div>
               </div>
-              <Button onClick={assignPlan} className="bg-[#FFD700] hover:bg-[#FFD700]/80 text-black text-xs font-semibold px-6"
+              <Button onClick={assignPlan} className="bg-[#F59E0B] hover:bg-[#F59E0B]/80 text-black text-xs font-semibold px-6"
                 data-testid="assign-plan-btn">
                 <UserCheck className="w-3.5 h-3.5 mr-1.5" /> Assign Plan
               </Button>
@@ -295,16 +295,16 @@ export default function AdminPage() {
                       <div className="flex items-center gap-2">
                         <p className="text-sm text-white font-medium">{plan.email}</p>
                         <Badge className={`text-[9px] capitalize ${
-                          plan.plan_name === 'titan' ? 'bg-[#FFD700]/10 text-[#FFD700]' :
-                          plan.plan_name === 'pro' ? 'bg-[#00FF94]/10 text-[#00FF94]' :
+                          plan.plan_name === 'titan' ? 'bg-[#F59E0B]/10 text-[#F59E0B]' :
+                          plan.plan_name === 'pro' ? 'bg-[#10B981]/10 text-[#10B981]' :
                           plan.plan_name === 'basic' ? 'bg-[#6366F1]/10 text-[#6366F1]' :
                           'bg-white/10 text-white/40'
                         }`}>{plan.plan_name}</Badge>
                         <Badge variant="outline" className="text-[9px] border-white/20 text-white/40">{plan.billing_cycle}</Badge>
                         <Badge className={`text-[9px] ${
-                          plan.status === 'active' ? 'bg-[#00FF94]/10 text-[#00FF94]' :
+                          plan.status === 'active' ? 'bg-[#10B981]/10 text-[#10B981]' :
                           plan.status === 'expired' ? 'bg-[#EAB308]/10 text-[#EAB308]' :
-                          'bg-[#FF2E2E]/10 text-[#FF2E2E]'
+                          'bg-[#EF4444]/10 text-[#EF4444]'
                         }`}>{plan.status}</Badge>
                       </div>
                       <div className="flex items-center gap-3 text-[10px] text-white/30">
@@ -353,7 +353,7 @@ export default function AdminPage() {
                   <tr key={sig.signal_id} className="border-b border-white/5 hover:bg-white/[0.02]">
                     <td className="py-2 px-3 text-white">{sig.asset_name}</td>
                     <td className="py-2 px-3">
-                      <Badge className={`text-[9px] ${sig.direction === 'BUY' ? 'bg-[#00FF94]/10 text-[#00FF94]' : 'bg-[#FF2E2E]/10 text-[#FF2E2E]'}`}>
+                      <Badge className={`text-[9px] ${sig.direction === 'BUY' ? 'bg-[#10B981]/10 text-[#10B981]' : 'bg-[#EF4444]/10 text-[#EF4444]'}`}>
                         {sig.direction}
                       </Badge>
                     </td>
@@ -383,13 +383,13 @@ export default function AdminPage() {
               {Object.entries(system.data_feeds).map(([key, feed]) => (
                 <div key={key} className="flex items-center justify-between p-3 rounded-lg bg-white/[0.02] border border-white/5">
                   <div className="flex items-center gap-3">
-                    {feed.status === 'active' ? <Wifi className="w-4 h-4 text-[#00FF94]" /> : <WifiOff className="w-4 h-4 text-[#FF2E2E]" />}
+                    {feed.status === 'active' ? <Wifi className="w-4 h-4 text-[#10B981]" /> : <WifiOff className="w-4 h-4 text-[#EF4444]" />}
                     <div>
                       <p className="text-sm text-white font-medium capitalize">{key}</p>
                       <p className="text-[10px] text-white/40">{feed.pairs || feed.assets} instruments | Refresh: {feed.refresh_rate}</p>
                     </div>
                   </div>
-                  <Badge className={feed.status === 'active' ? 'bg-[#00FF94]/10 text-[#00FF94]' : 'bg-[#FF2E2E]/10 text-[#FF2E2E]'}>
+                  <Badge className={feed.status === 'active' ? 'bg-[#10B981]/10 text-[#10B981]' : 'bg-[#EF4444]/10 text-[#EF4444]'}>
                     {feed.status}
                   </Badge>
                 </div>
@@ -399,7 +399,7 @@ export default function AdminPage() {
           <Card className="glass-panel border-white/10">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm text-white/80 flex items-center gap-2">
-                <Activity className="w-4 h-4 text-[#FFD700]" /> Market Status
+                <Activity className="w-4 h-4 text-[#F59E0B]" /> Market Status
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -407,7 +407,7 @@ export default function AdminPage() {
                 {Object.entries(system.market_status).map(([market, status]) => (
                   <div key={market} className="text-center p-3 rounded-lg bg-white/[0.02] border border-white/5">
                     <p className="text-xs text-white/40 uppercase mb-1">{market}</p>
-                    <Badge className={status.open ? 'bg-[#00FF94]/10 text-[#00FF94]' : 'bg-[#FF2E2E]/10 text-[#FF2E2E]'}>
+                    <Badge className={status.open ? 'bg-[#10B981]/10 text-[#10B981]' : 'bg-[#EF4444]/10 text-[#EF4444]'}>
                       {status.label}
                     </Badge>
                   </div>

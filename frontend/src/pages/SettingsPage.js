@@ -126,7 +126,7 @@ export default function SettingsPage() {
               <p className="text-sm text-white">Authentication Method</p>
               <p className="text-xs text-white/30">{user?.auth_type === 'google' ? 'Google OAuth' : 'Email & Password'}</p>
             </div>
-            <span className="text-xs text-[#00FF94] bg-[#00FF94]/10 px-2 py-1 rounded">Active</span>
+            <span className="text-xs text-[#10B981] bg-[#10B981]/10 px-2 py-1 rounded">Active</span>
           </div>
           <Separator className="bg-white/5" />
           <div className="flex items-center justify-between">
@@ -144,10 +144,10 @@ export default function SettingsPage() {
       </Button>
 
       {/* Logout */}
-      <Card className="glass-panel border-white/10 border-l-2 border-l-[#FF2E2E]" data-testid="logout-card">
+      <Card className="glass-panel border-white/10 border-l-2 border-l-[#EF4444]" data-testid="logout-card">
         <CardHeader className="pb-3">
           <CardTitle className="text-sm text-white/80 flex items-center gap-2">
-            <LogOut className="w-4 h-4 text-[#FF2E2E]" /> Session
+            <LogOut className="w-4 h-4 text-[#EF4444]" /> Session
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -158,7 +158,7 @@ export default function SettingsPage() {
             </div>
             <Button
               variant="outline"
-              className="border-[#FF2E2E]/30 text-[#FF2E2E] hover:bg-[#FF2E2E]/10 hover:border-[#FF2E2E]/50 text-xs"
+              className="border-[#EF4444]/30 text-[#EF4444] hover:bg-[#EF4444]/10 hover:border-[#EF4444]/50 text-xs"
               onClick={handleLogout}
               data-testid="logout-btn"
             >

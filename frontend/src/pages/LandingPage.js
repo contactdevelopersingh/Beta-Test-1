@@ -12,9 +12,9 @@ const features = [
 ];
 
 const markets = [
-  { name: 'Crypto', pairs: '20 Pairs', source: 'Kraken Exchange', color: '#FFD700', items: ['BTC', 'ETH', 'SOL', 'XRP', 'DOGE', 'ADA'] },
-  { name: 'Forex', pairs: '21 Pairs', source: 'OANDA (Institutional)', color: '#00FFB2', items: ['EUR/USD', 'GBP/USD', 'XAU/USD', 'GBP/JPY'] },
-  { name: 'Indian', pairs: '44 Assets', source: 'NSE/BSE Live', color: '#FF2D2D', items: ['NIFTY 50', 'SENSEX', 'RELIANCE', 'TCS'] },
+  { name: 'Crypto', pairs: '20 Pairs', source: 'Kraken Exchange', color: '#F59E0B', items: ['BTC', 'ETH', 'SOL', 'XRP', 'DOGE', 'ADA'] },
+  { name: 'Forex', pairs: '21 Pairs', source: 'OANDA (Institutional)', color: '#10B981', items: ['EUR/USD', 'GBP/USD', 'XAU/USD', 'GBP/JPY'] },
+  { name: 'Indian', pairs: '44 Assets', source: 'NSE/BSE Live', color: '#EF4444', items: ['NIFTY 50', 'SENSEX', 'RELIANCE', 'TCS'] },
 ];
 
 const stats = [
@@ -56,19 +56,19 @@ export default function LandingPage() {
       <section className="relative pt-32 pb-24 px-6 overflow-hidden" data-testid="hero-section">
         <div className="absolute inset-0 hero-glow" />
         <div className="absolute top-20 right-0 w-96 h-96 bg-[#6366F1]/5 rounded-full blur-[120px]" />
-        <div className="absolute bottom-0 left-0 w-72 h-72 bg-[#00FFB2]/3 rounded-full blur-[100px]" />
+        <div className="absolute bottom-0 left-0 w-72 h-72 bg-[#10B981]/3 rounded-full blur-[100px]" />
         <div className="max-w-5xl mx-auto relative z-10">
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-[#6366F1]/30 bg-[#6366F1]/10 mb-8 stagger-item">
-            <div className="w-1.5 h-1.5 rounded-full bg-[#00FF94] animate-pulse" />
+            <div className="w-1.5 h-1.5 rounded-full bg-[#10B981] animate-pulse" />
             <span className="text-xs text-[#6366F1] font-medium font-mono">LIVE TRADING INTELLIGENCE</span>
           </div>
 
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-white leading-[1.08] tracking-tight mb-6 stagger-item uppercase" style={{ fontFamily: 'Manrope', letterSpacing: '-0.02em' }}>
+          <h1 className="text-3xl sm:text-4xl lg:text-6xl font-extrabold text-white leading-[1.08] tracking-tight mb-6 stagger-item uppercase" style={{ fontFamily: 'Manrope', letterSpacing: '-0.02em' }}>
             Retail Interface.<br />
             <span className="text-[#6366F1]">Institutional</span> Edge.
           </h1>
 
-          <p className="text-base text-white/50 max-w-xl mb-10 stagger-item leading-relaxed" style={{ fontFamily: 'Sora' }}>
+          <p className="text-sm sm:text-base text-white/50 max-w-xl mb-8 sm:mb-10 stagger-item leading-relaxed" style={{ fontFamily: 'Sora' }}>
             Multi-timeframe AI signals with SL/TP levels, confluence scoring, and 10 trading strategies across Crypto, Forex & Indian markets.
           </p>
 

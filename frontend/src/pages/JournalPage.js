@@ -9,10 +9,10 @@ import { BookOpen, Plus, TrendingUp, TrendingDown, DollarSign, Target, Clock, Br
 import { toast } from 'sonner';
 
 const EMOTIONS = [
-  { id: 'calm', label: 'Calm', color: '#00FF94' },
+  { id: 'calm', label: 'Calm', color: '#10B981' },
   { id: 'confident', label: 'Confident', color: '#6366F1' },
   { id: 'fear', label: 'Fear', color: '#EAB308' },
-  { id: 'greed', label: 'Greed', color: '#FF2E2E' },
+  { id: 'greed', label: 'Greed', color: '#EF4444' },
   { id: 'fomo', label: 'FOMO', color: '#FF6B35' },
   { id: 'revenge', label: 'Revenge', color: '#DC2626' },
 ];
@@ -23,7 +23,7 @@ const StarRating = ({ value, onChange, readonly = false }) => (
       <button key={i} onClick={() => !readonly && onChange?.(i)}
         className={`${readonly ? 'cursor-default' : 'cursor-pointer hover:scale-110'} transition-transform`}
         disabled={readonly}>
-        <Star className={`w-4 h-4 ${i <= value ? 'fill-[#FFD700] text-[#FFD700]' : 'text-white/20'}`} />
+        <Star className={`w-4 h-4 ${i <= value ? 'fill-[#F59E0B] text-[#F59E0B]' : 'text-white/20'}`} />
       </button>
     ))}
   </div>
@@ -159,7 +159,7 @@ export default function JournalPage() {
           <Card className="glass-panel border-white/10">
             <CardContent className="p-4">
               <p className="text-[10px] text-white/40 uppercase tracking-wider">Win Rate</p>
-              <p className={`text-2xl font-bold font-data mt-1 ${stats.win_rate >= 50 ? 'text-[#00FF94]' : 'text-[#FF2E2E]'}`}>
+              <p className={`text-2xl font-bold font-data mt-1 ${stats.win_rate >= 50 ? 'text-[#10B981]' : 'text-[#EF4444]'}`}>
                 {stats.win_rate}%
               </p>
             </CardContent>
@@ -167,7 +167,7 @@ export default function JournalPage() {
           <Card className="glass-panel border-white/10">
             <CardContent className="p-4">
               <p className="text-[10px] text-white/40 uppercase tracking-wider">Total P&L</p>
-              <p className={`text-2xl font-bold font-data mt-1 ${stats.total_pnl >= 0 ? 'text-[#00FF94]' : 'text-[#FF2E2E]'}`}>
+              <p className={`text-2xl font-bold font-data mt-1 ${stats.total_pnl >= 0 ? 'text-[#10B981]' : 'text-[#EF4444]'}`}>
                 ${stats.total_pnl.toLocaleString()}
               </p>
             </CardContent>
@@ -176,9 +176,9 @@ export default function JournalPage() {
             <CardContent className="p-4">
               <p className="text-[10px] text-white/40 uppercase tracking-wider">W / L</p>
               <p className="text-2xl font-bold font-data text-white mt-1">
-                <span className="text-[#00FF94]">{stats.wins}</span>
+                <span className="text-[#10B981]">{stats.wins}</span>
                 <span className="text-white/30 mx-1">/</span>
-                <span className="text-[#FF2E2E]">{stats.losses}</span>
+                <span className="text-[#EF4444]">{stats.losses}</span>
               </p>
             </CardContent>
           </Card>
@@ -187,11 +187,11 @@ export default function JournalPage() {
 
       {/* Trade Entry Form */}
       {showForm && (
-        <Card className="glass-panel border-white/10 border-l-2 border-l-[#FFD700]" data-testid="trade-form">
+        <Card className="glass-panel border-white/10 border-l-2 border-l-[#F59E0B]" data-testid="trade-form">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <CardTitle className="text-sm text-white/80 flex items-center gap-2">
-                <BookOpen className="w-4 h-4 text-[#FFD700]" /> {editingId ? 'Edit Trade' : 'Log New Trade'}
+                <BookOpen className="w-4 h-4 text-[#F59E0B]" /> {editingId ? 'Edit Trade' : 'Log New Trade'}
               </CardTitle>
               <button onClick={resetForm} className="text-white/40 hover:text-white"><X className="w-4 h-4" /></button>
             </div>
@@ -308,7 +308,7 @@ export default function JournalPage() {
                 <StarRating value={form.quality_rating} onChange={v => setForm(p => ({...p, quality_rating: v}))} />
               </div>
             </div>
-            <Button onClick={handleSubmit} className="bg-[#FFD700] hover:bg-[#FFD700]/80 text-black text-xs font-semibold px-6"
+            <Button onClick={handleSubmit} className="bg-[#F59E0B] hover:bg-[#F59E0B]/80 text-black text-xs font-semibold px-6"
               data-testid="submit-trade-btn">
               <Check className="w-3.5 h-3.5 mr-1.5" /> {editingId ? 'Update Trade' : 'Log Trade'}
             </Button>
@@ -351,7 +351,7 @@ export default function JournalPage() {
                     <div className="flex-1 space-y-2 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <h3 className="text-sm font-semibold text-white">{trade.asset_name}</h3>
-                        <Badge className={`text-[10px] ${trade.direction === 'BUY' ? 'bg-[#00FF94]/10 text-[#00FF94]' : 'bg-[#FF2E2E]/10 text-[#FF2E2E]'}`}>
+                        <Badge className={`text-[10px] ${trade.direction === 'BUY' ? 'bg-[#10B981]/10 text-[#10B981]' : 'bg-[#EF4444]/10 text-[#EF4444]'}`}>
                           {trade.direction}
                         </Badge>
                         <Badge variant="outline" className={`text-[10px] ${
@@ -361,7 +361,7 @@ export default function JournalPage() {
                           {trade.status}
                         </Badge>
                         {trade.pnl !== null && trade.pnl !== undefined && (
-                          <Badge className={`text-[10px] ${trade.pnl >= 0 ? 'bg-[#00FF94]/10 text-[#00FF94]' : 'bg-[#FF2E2E]/10 text-[#FF2E2E]'}`}>
+                          <Badge className={`text-[10px] ${trade.pnl >= 0 ? 'bg-[#10B981]/10 text-[#10B981]' : 'bg-[#EF4444]/10 text-[#EF4444]'}`}>
                             {trade.pnl >= 0 ? '+' : ''}${trade.pnl.toLocaleString()}
                           </Badge>
                         )}
@@ -381,7 +381,7 @@ export default function JournalPage() {
                       </div>
                       {trade.entry_reasoning && <p className="text-[10px] text-white/40">{trade.entry_reasoning}</p>}
                       {trade.lesson_learned && (
-                        <p className="text-[10px] text-[#FFD700]/70 flex items-center gap-1">
+                        <p className="text-[10px] text-[#F59E0B]/70 flex items-center gap-1">
                           <Brain className="w-3 h-3" /> {trade.lesson_learned}
                         </p>
                       )}

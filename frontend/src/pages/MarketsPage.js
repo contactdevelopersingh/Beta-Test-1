@@ -26,7 +26,7 @@ const fmtVol = (v) => {
 const MiniChart = ({ data, positive }) => {
   if (!data || data.length < 5) return null;
   const pts = data.filter((_, i) => i % Math.ceil(data.length / 20) === 0).map(v => ({ v }));
-  const col = positive ? '#00FF94' : '#FF2E2E';
+  const col = positive ? '#10B981' : '#EF4444';
   return (
     <ResponsiveContainer width={80} height={28}>
       <AreaChart data={pts}>
@@ -85,7 +85,7 @@ export default function MarketsPage() {
                 { key: 'indian', label: 'Indian' },
               ].map(m => (
                 <div key={m.key} className="flex items-center gap-1">
-                  <div className={`w-1.5 h-1.5 rounded-full ${market_status[m.key]?.open ? 'bg-[#00FF94]' : 'bg-[#EAB308]'}`} />
+                  <div className={`w-1.5 h-1.5 rounded-full ${market_status[m.key]?.open ? 'bg-[#10B981]' : 'bg-[#EAB308]'}`} />
                   <span className={`text-[10px] font-data ${market_status[m.key]?.open ? 'text-white/50' : 'text-[#EAB308]/70'}`}>{m.label}</span>
                 </div>
               ))}
@@ -106,14 +106,14 @@ export default function MarketsPage() {
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList className="bg-white/5">
           <TabsTrigger value="crypto" className="text-xs data-[state=active]:bg-[#6366F1] data-[state=active]:text-white" data-testid="crypto-tab">
-            <Wifi className="w-3 h-3 mr-1 text-[#00FF94]" /> Crypto ({crypto.length})
+            <Wifi className="w-3 h-3 mr-1 text-[#10B981]" /> Crypto ({crypto.length})
           </TabsTrigger>
           <TabsTrigger value="forex" className="text-xs data-[state=active]:bg-[#6366F1] data-[state=active]:text-white" data-testid="forex-tab">
-            {market_status?.forex?.open ? <Wifi className="w-3 h-3 mr-1 text-[#00FF94]" /> : <Clock className="w-3 h-3 mr-1 text-[#EAB308]" />}
+            {market_status?.forex?.open ? <Wifi className="w-3 h-3 mr-1 text-[#10B981]" /> : <Clock className="w-3 h-3 mr-1 text-[#EAB308]" />}
             Forex ({forex.length}) {!market_status?.forex?.open && <span className="ml-1 text-[9px] text-[#EAB308]">CLOSED</span>}
           </TabsTrigger>
           <TabsTrigger value="indian" className="text-xs data-[state=active]:bg-[#6366F1] data-[state=active]:text-white" data-testid="indian-tab">
-            {market_status?.indian?.open ? <Wifi className="w-3 h-3 mr-1 text-[#00FF94]" /> : <Clock className="w-3 h-3 mr-1 text-[#EAB308]" />}
+            {market_status?.indian?.open ? <Wifi className="w-3 h-3 mr-1 text-[#10B981]" /> : <Clock className="w-3 h-3 mr-1 text-[#EAB308]" />}
             Indian ({indian.length}) {!market_status?.indian?.open && <span className="ml-1 text-[9px] text-[#EAB308]">CLOSED</span>}
           </TabsTrigger>
         </TabsList>
@@ -146,7 +146,7 @@ export default function MarketsPage() {
                         </div>
                       </td>
                       <td className="py-3 px-4 text-right text-sm text-white font-data price-value">${fmtPrice(coin.price)}</td>
-                      <td className={`py-3 px-4 text-right text-xs font-data ${coin.change_24h >= 0 ? 'text-[#00FF94]' : 'text-[#FF2E2E]'}`}>
+                      <td className={`py-3 px-4 text-right text-xs font-data ${coin.change_24h >= 0 ? 'text-[#10B981]' : 'text-[#EF4444]'}`}>
                         <span className="flex items-center justify-end gap-0.5">
                           {coin.change_24h >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
                           {coin.change_24h?.toFixed(2)}%
@@ -206,7 +206,7 @@ export default function MarketsPage() {
                       <td className="py-3 px-4 text-right text-sm text-white font-data font-medium price-value">{pair.bid ? fmtPrice(pair.bid, dec) : fmtPrice(pair.price, dec)}</td>
                       <td className="py-3 px-4 text-right text-sm text-white/70 font-data price-value">{pair.ask ? fmtPrice(pair.ask, dec) : '-'}</td>
                       <td className="py-3 px-4 text-right text-xs text-white/40 font-data hidden sm:table-cell">{pair.spread != null ? pair.spread.toFixed(1) : '-'}</td>
-                      <td className={`py-3 px-4 text-right text-xs font-data font-medium ${pair.change_24h >= 0 ? 'text-[#00FF94]' : 'text-[#FF2E2E]'}`}>
+                      <td className={`py-3 px-4 text-right text-xs font-data font-medium ${pair.change_24h >= 0 ? 'text-[#10B981]' : 'text-[#EF4444]'}`}>
                         {pair.change_24h >= 0 ? '+' : ''}{pair.change_24h?.toFixed(2)}%
                       </td>
                       <td className="py-3 px-4 text-right hidden md:table-cell">
@@ -263,7 +263,7 @@ export default function MarketsPage() {
                       <td className="py-3 px-4"><span className="text-sm text-white font-semibold">{s.name}</span></td>
                       <td className="py-3 px-4 text-xs text-[#6366F1] font-data font-medium">{s.symbol}</td>
                       <td className="py-3 px-4 text-right text-sm text-white font-data font-semibold price-value">{fmtPrice(s.price)}</td>
-                      <td className={`py-3 px-4 text-right text-xs font-data font-medium ${s.change_24h >= 0 ? 'text-[#00FF94]' : 'text-[#FF2E2E]'}`}>{s.change_24h >= 0 ? '+' : ''}{s.change_24h?.toFixed(2)}%</td>
+                      <td className={`py-3 px-4 text-right text-xs font-data font-medium ${s.change_24h >= 0 ? 'text-[#10B981]' : 'text-[#EF4444]'}`}>{s.change_24h >= 0 ? '+' : ''}{s.change_24h?.toFixed(2)}%</td>
                       <td className="py-3 px-4 text-right text-xs text-white/50 font-data hidden sm:table-cell">{fmtPrice(s.high)}</td>
                       <td className="py-3 px-4 text-right text-xs text-white/50 font-data hidden sm:table-cell">{fmtPrice(s.low)}</td>
                       <td className="py-3 px-4 text-right text-xs text-white/40 font-data hidden md:table-cell">{fmtVol(s.volume)}</td>
@@ -274,8 +274,8 @@ export default function MarketsPage() {
                   ))}
                   {/* Stocks */}
                   {filteredIndian.filter(s => s.type === 'stock').length > 0 && (
-                    <tr><td colSpan={8} className="py-2 px-4 bg-[#00FF94]/5 border-b border-[#00FF94]/10">
-                      <span className="text-[10px] font-semibold text-[#00FF94] uppercase tracking-widest">Stocks</span>
+                    <tr><td colSpan={8} className="py-2 px-4 bg-[#10B981]/5 border-b border-[#10B981]/10">
+                      <span className="text-[10px] font-semibold text-[#10B981] uppercase tracking-widest">Stocks</span>
                     </td></tr>
                   )}
                   {filteredIndian.filter(s => s.type === 'stock').map(s => (
@@ -283,7 +283,7 @@ export default function MarketsPage() {
                       <td className="py-3 px-4"><span className="text-sm text-white font-medium">{s.name}</span></td>
                       <td className="py-3 px-4 text-xs text-white/50 font-data">{s.symbol}</td>
                       <td className="py-3 px-4 text-right text-sm text-white font-data price-value">{fmtPrice(s.price)}</td>
-                      <td className={`py-3 px-4 text-right text-xs font-data ${s.change_24h >= 0 ? 'text-[#00FF94]' : 'text-[#FF2E2E]'}`}>{s.change_24h >= 0 ? '+' : ''}{s.change_24h?.toFixed(2)}%</td>
+                      <td className={`py-3 px-4 text-right text-xs font-data ${s.change_24h >= 0 ? 'text-[#10B981]' : 'text-[#EF4444]'}`}>{s.change_24h >= 0 ? '+' : ''}{s.change_24h?.toFixed(2)}%</td>
                       <td className="py-3 px-4 text-right text-xs text-white/50 font-data hidden sm:table-cell">{fmtPrice(s.high)}</td>
                       <td className="py-3 px-4 text-right text-xs text-white/50 font-data hidden sm:table-cell">{fmtPrice(s.low)}</td>
                       <td className="py-3 px-4 text-right text-xs text-white/40 font-data hidden md:table-cell">{fmtVol(s.volume)}</td>

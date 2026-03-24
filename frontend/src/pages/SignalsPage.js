@@ -57,27 +57,39 @@ const STRATEGIES = [
 
 const ConfidenceRing = ({ value }) => {
   const r = 28, c = 2 * Math.PI * r;
-  const color = value >= 80 ? '#00FF94' : value >= 60 ? '#6366F1' : value >= 40 ? '#EAB308' : '#FF2E2E';
+  const color = value >= 80 ? '#10B981' : value >= 60 ? '#6366F1' : value >= 40 ? '#F59E0B' : '#EF4444';
   return (
-    <div className="relative w-20 h-20 flex items-center justify-center flex-shrink-0">
-      <svg className="w-20 h-20 -rotate-90" viewBox="0 0 64 64">
-        <circle cx="32" cy="32" r={r} fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="4" />
-        <circle cx="32" cy="32" r={r} fill="none" stroke={color} strokeWidth="4" strokeLinecap="round"
+    <div className="relative w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center flex-shrink-0">
+      <svg className="w-full h-full -rotate-90" viewBox="0 0 64 64">
+        <circle cx="32" cy="32" r={r} fill="none" stroke="rgba(255,255,255,0.04)" strokeWidth="3.5" />
+        <circle cx="32" cy="32" r={r} fill="none" stroke={color} strokeWidth="3.5" strokeLinecap="round"
           strokeDasharray={`${(value/100)*c} ${c}`} style={{ transition: 'stroke-dasharray 0.6s ease' }} />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-lg font-bold font-data text-white">{value}%</span>
+        <span className="text-base sm:text-xl font-semibold font-data text-white">{value}%</span>
       </div>
     </div>
+  );
+};
+
+const RiskBadge = ({ riskReward }) => {
+  if (!riskReward) return null;
+  const ratio = parseFloat(riskReward.split(':')[1]) || 0;
+  const level = ratio >= 2.5 ? 'low' : ratio >= 1.5 ? 'medium' : 'high';
+  const label = level === 'low' ? 'Low Risk' : level === 'medium' ? 'Med Risk' : 'High Risk';
+  return (
+    <span className={`risk-${level} text-[10px] sm:text-[11px] font-medium px-2 py-0.5 rounded-full`} data-testid="risk-badge">
+      {label}
+    </span>
   );
 };
 
 const ConfluenceDots = ({ score = 0, max = 6 }) => (
   <div className="flex gap-1 items-center">
     {Array.from({ length: max }).map((_, i) => (
-      <div key={i} className={`w-2 h-2 rounded-full transition-all ${i < score ? 'bg-[#00FF94] shadow-[0_0_4px_#00FF94]' : 'bg-white/10'}`} />
+      <div key={i} className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full transition-all ${i < score ? 'bg-[#10B981] shadow-[0_0_3px_rgba(16,185,129,0.5)]' : 'bg-white/8'}`} />
     ))}
-    <span className="text-[10px] text-white/40 ml-1">{score}/{max}</span>
+    <span className="text-[9px] sm:text-[10px] text-white/40 ml-1">{score}/{max}</span>
   </div>
 );
 
@@ -282,8 +294,8 @@ export default function SignalsPage() {
               <BarChart3 className="w-3.5 h-3.5" />
               <span className="font-data">{signals.length} signals</span>
               <span className="text-white/20">|</span>
-              <span className="font-data text-[#00FF94]">{buyCount} BUY</span>
-              <span className="font-data text-[#FF2E2E]">{sellCount} SELL</span>
+              <span className="font-data text-[#10B981]">{buyCount} BUY</span>
+              <span className="font-data text-[#EF4444]">{sellCount} SELL</span>
             </div>
           </div>
           <div className="flex gap-1">
@@ -343,20 +355,21 @@ export default function SignalsPage() {
                     <div className="flex-1 space-y-3 min-w-0">
                       {/* Header Row */}
                       <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className="text-base font-semibold text-white">{sig.asset_name}</h3>
+                        <h3 className="text-sm sm:text-base font-semibold text-white">{sig.asset_name}</h3>
                         <Badge data-testid={`signal-direction-${sig.signal_id}`}
-                          className={`text-xs ${sig.direction === 'BUY' ? 'bg-[#00FF94]/10 text-[#00FF94] border-[#00FF94]/20' : 'bg-[#FF2E2E]/10 text-[#FF2E2E] border-[#FF2E2E]/20'}`}>
+                          className={`text-[11px] font-semibold ${sig.direction === 'BUY' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20'}`}>
                           {sig.direction}
                         </Badge>
                         <Badge variant="outline" className="text-[10px] border-[#6366F1]/30 text-[#6366F1]">Grade: {sig.grade}</Badge>
-                        <Badge variant="outline" className="text-[10px] border-white/20 text-white/50">{sig.market_condition}</Badge>
+                        <RiskBadge riskReward={sig.risk_reward} />
+                        <Badge variant="outline" className="text-[10px] border-white/15 text-white/45">{sig.market_condition}</Badge>
                         {sig.strategy_used && sig.strategy_used !== 'auto' && (
-                          <Badge variant="outline" className="text-[10px] border-[#FFD700]/30 text-[#FFD700]">
+                          <Badge variant="outline" className="text-[10px] border-amber-500/25 text-amber-400">
                             {STRATEGIES.find(s => s.id === sig.strategy_used)?.name || sig.strategy_used}
                           </Badge>
                         )}
                         {pnlPct !== null && (
-                          <Badge className={`text-[10px] ${pnlPct >= 0 ? 'bg-[#00FF94]/10 text-[#00FF94]' : 'bg-[#FF2E2E]/10 text-[#FF2E2E]'}`}>
+                          <Badge className={`text-[10px] font-data ${pnlPct >= 0 ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'}`}>
                             {pnlPct >= 0 ? '+' : ''}{pnlPct.toFixed(2)}% P&L
                           </Badge>
                         )}
@@ -377,14 +390,14 @@ export default function SignalsPage() {
                         )}
                         {sig.holding_duration && (
                           <div className="flex items-center gap-1">
-                            <Timer className="w-3 h-3 text-[#FFD700]" />
+                            <Timer className="w-3 h-3 text-[#F59E0B]" />
                             <span className="text-white/40">Hold:</span>
                             <span className="text-white/70 font-medium">{sig.holding_duration}</span>
                           </div>
                         )}
                         {sig.confluence_score && (
                           <div className="flex items-center gap-1">
-                            <Crosshair className="w-3 h-3 text-[#00FF94]" />
+                            <Crosshair className="w-3 h-3 text-[#10B981]" />
                             <span className="text-white/40">Confluence:</span>
                             <ConfluenceDots score={sig.confluence_score} max={6} />
                           </div>
@@ -392,38 +405,38 @@ export default function SignalsPage() {
                       </div>
 
                       {/* Price Levels Grid */}
-                      <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
+                      <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 sm:gap-3">
                         <div>
                           <p className="text-[10px] text-white/40 flex items-center gap-1"><Target className="w-3 h-3" /> Entry</p>
-                          <p className="text-sm font-data text-white" data-testid={`entry-${sig.signal_id}`}>{entryPrice || 'N/A'}</p>
+                          <p className="text-sm sm:text-base font-data font-semibold text-white" data-testid={`entry-${sig.signal_id}`}>{entryPrice || 'N/A'}</p>
                         </div>
                         <div>
                           <p className="text-[10px] text-white/40 flex items-center gap-1">
-                            {hitTP1 ? <CheckCircle2 className="w-3 h-3 text-[#00FF94]" /> : <TrendingUp className="w-3 h-3" />} TP1
+                            {hitTP1 ? <CheckCircle2 className="w-3 h-3 text-emerald-400" /> : <TrendingUp className="w-3 h-3" />} TP1
                           </p>
-                          <p className={`text-sm font-data ${hitTP1 ? 'text-[#00FF94] font-bold' : 'text-[#00FF94]'}`}>{sig.take_profit_1 || 'N/A'}</p>
+                          <p className={`text-sm sm:text-base font-data font-semibold ${hitTP1 ? 'text-emerald-400' : 'text-emerald-500/80'}`}>{sig.take_profit_1 || 'N/A'}</p>
                         </div>
                         <div>
                           <p className="text-[10px] text-white/40 flex items-center gap-1">
-                            {hitTP2 ? <CheckCircle2 className="w-3 h-3 text-[#00FF94]" /> : <TrendingUp className="w-3 h-3" />} TP2
+                            {hitTP2 ? <CheckCircle2 className="w-3 h-3 text-emerald-400" /> : <TrendingUp className="w-3 h-3" />} TP2
                           </p>
-                          <p className={`text-sm font-data ${hitTP2 ? 'text-[#00FF94] font-bold' : 'text-[#00FF94]'}`}>{sig.take_profit_2 || 'N/A'}</p>
+                          <p className={`text-sm sm:text-base font-data font-semibold ${hitTP2 ? 'text-emerald-400' : 'text-emerald-500/80'}`}>{sig.take_profit_2 || 'N/A'}</p>
                         </div>
                         <div>
                           <p className="text-[10px] text-white/40 flex items-center gap-1">
-                            {hitTP3 ? <CheckCircle2 className="w-3 h-3 text-[#00FF94]" /> : <TrendingUp className="w-3 h-3" />} TP3
+                            {hitTP3 ? <CheckCircle2 className="w-3 h-3 text-[#10B981]" /> : <TrendingUp className="w-3 h-3" />} TP3
                           </p>
-                          <p className={`text-sm font-data ${hitTP3 ? 'text-[#00FF94] font-bold' : 'text-[#00FF94]/70'}`}>{sig.take_profit_3 || 'N/A'}</p>
+                          <p className={`text-sm sm:text-base font-data font-semibold ${hitTP3 ? 'text-emerald-400' : 'text-emerald-500/60'}`}>{sig.take_profit_3 || 'N/A'}</p>
                         </div>
                         <div>
                           <p className="text-[10px] text-white/40 flex items-center gap-1">
-                            {hitSL ? <XCircle className="w-3 h-3 text-[#FF2E2E]" /> : <ShieldAlert className="w-3 h-3" />} Stop Loss
+                            {hitSL ? <XCircle className="w-3 h-3 text-red-400" /> : <ShieldAlert className="w-3 h-3" />} Stop Loss
                           </p>
-                          <p className={`text-sm font-data ${hitSL ? 'text-[#FF2E2E] font-bold' : 'text-[#FF2E2E]'}`}>{sig.stop_loss || 'N/A'}</p>
+                          <p className={`text-sm sm:text-base font-data font-semibold ${hitSL ? 'text-red-400' : 'text-red-500/80'}`}>{sig.stop_loss || 'N/A'}</p>
                         </div>
                         <div>
                           <p className="text-[10px] text-white/40 flex items-center gap-1"><Clock className="w-3 h-3" /> R:R</p>
-                          <p className="text-sm font-data text-white">{sig.risk_reward || 'N/A'}</p>
+                          <p className="text-sm sm:text-base font-data font-semibold text-white">{sig.risk_reward || 'N/A'}</p>
                         </div>
                       </div>
 
@@ -432,10 +445,10 @@ export default function SignalsPage() {
                         <div className="flex items-center gap-2 text-[10px]">
                           <span className="text-white/30">Live:</span>
                           <span className="font-data text-white/70">${currentPrice.toLocaleString()}</span>
-                          {hitTP1 && <Badge className="bg-[#00FF94]/10 text-[#00FF94] text-[9px]"><CheckCircle2 className="w-2.5 h-2.5 mr-0.5" />TP1</Badge>}
-                          {hitTP2 && <Badge className="bg-[#00FF94]/10 text-[#00FF94] text-[9px]"><CheckCircle2 className="w-2.5 h-2.5 mr-0.5" />TP2</Badge>}
-                          {hitTP3 && <Badge className="bg-[#00FF94]/10 text-[#00FF94] text-[9px]"><CheckCircle2 className="w-2.5 h-2.5 mr-0.5" />TP3</Badge>}
-                          {hitSL && <Badge className="bg-[#FF2E2E]/10 text-[#FF2E2E] text-[9px]"><XCircle className="w-2.5 h-2.5 mr-0.5" />SL Hit</Badge>}
+                          {hitTP1 && <Badge className="bg-[#10B981]/10 text-[#10B981] text-[9px]"><CheckCircle2 className="w-2.5 h-2.5 mr-0.5" />TP1</Badge>}
+                          {hitTP2 && <Badge className="bg-[#10B981]/10 text-[#10B981] text-[9px]"><CheckCircle2 className="w-2.5 h-2.5 mr-0.5" />TP2</Badge>}
+                          {hitTP3 && <Badge className="bg-[#10B981]/10 text-[#10B981] text-[9px]"><CheckCircle2 className="w-2.5 h-2.5 mr-0.5" />TP3</Badge>}
+                          {hitSL && <Badge className="bg-[#EF4444]/10 text-[#EF4444] text-[9px]"><XCircle className="w-2.5 h-2.5 mr-0.5" />SL Hit</Badge>}
                         </div>
                       )}
 
@@ -475,7 +488,7 @@ export default function SignalsPage() {
                           {sig.higher_tf_bias && (
                             <div className="flex items-center gap-2 text-[10px]">
                               <span className="text-white/40">Higher TF Bias:</span>
-                              <span className={`font-medium ${sig.higher_tf_bias?.toLowerCase().includes('bullish') ? 'text-[#00FF94]' : sig.higher_tf_bias?.toLowerCase().includes('bearish') ? 'text-[#FF2E2E]' : 'text-white/60'}`}>
+                              <span className={`font-medium ${sig.higher_tf_bias?.toLowerCase().includes('bullish') ? 'text-[#10B981]' : sig.higher_tf_bias?.toLowerCase().includes('bearish') ? 'text-[#EF4444]' : 'text-white/60'}`}>
                                 {sig.higher_tf_bias}
                               </span>
                             </div>

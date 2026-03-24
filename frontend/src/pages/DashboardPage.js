@@ -24,7 +24,7 @@ const fmtPrice = (p) => {
 
 const SentimentGauge = ({ value, label }) => {
   const angle = (value / 100) * 180 - 90;
-  const c = value < 25 ? '#FF2E2E' : value < 45 ? '#F97316' : value < 55 ? '#EAB308' : value < 75 ? '#22C55E' : '#00FF94';
+  const c = value < 25 ? '#EF4444' : value < 45 ? '#F97316' : value < 55 ? '#EAB308' : value < 75 ? '#22C55E' : '#10B981';
   return (
     <div className="flex flex-col items-center">
       <svg width="130" height="75" viewBox="0 0 140 80">
@@ -49,10 +49,10 @@ const TickerTape = ({ crypto, priceChanges }) => {
           <div key={`${c.id}-${i}`} className="flex items-center gap-2 shrink-0">
             {c.image && <img src={c.image} alt="" className="w-4 h-4 rounded-full" />}
             <span className="text-[11px] text-white/60">{c.symbol}</span>
-            <span className={`text-[11px] font-data font-medium price-value ${priceChanges[c.id] === 'up' ? 'text-[#00FF94]' : priceChanges[c.id] === 'down' ? 'text-[#FF2E2E]' : 'text-white'}`}>
+            <span className={`text-[11px] font-data font-medium price-value ${priceChanges[c.id] === 'up' ? 'text-[#10B981]' : priceChanges[c.id] === 'down' ? 'text-[#EF4444]' : 'text-white'}`}>
               {fmtPrice(c.price)}
             </span>
-            <span className={`text-[10px] font-data ${c.change_24h >= 0 ? 'text-[#00FF94]' : 'text-[#FF2E2E]'}`}>
+            <span className={`text-[10px] font-data ${c.change_24h >= 0 ? 'text-[#10B981]' : 'text-[#EF4444]'}`}>
               {c.change_24h >= 0 ? '+' : ''}{c.change_24h?.toFixed(2)}%
             </span>
           </div>
@@ -66,7 +66,7 @@ const MoverCard = ({ items, title, isGainer }) => (
   <Card className="glass-panel border-white/10">
     <CardHeader className="pb-2">
       <CardTitle className="text-xs text-white/60 flex items-center gap-2">
-        {isGainer ? <TrendingUp className="w-3.5 h-3.5 text-[#00FF94]" /> : <TrendingDown className="w-3.5 h-3.5 text-[#FF2E2E]" />}
+        {isGainer ? <TrendingUp className="w-3.5 h-3.5 text-[#10B981]" /> : <TrendingDown className="w-3.5 h-3.5 text-[#EF4444]" />}
         {title}
       </CardTitle>
     </CardHeader>
@@ -78,7 +78,7 @@ const MoverCard = ({ items, title, isGainer }) => (
             <span className="text-xs text-white font-medium truncate max-w-[80px]">{item.symbol || item.name}</span>
             <Badge variant="outline" className="text-[8px] border-white/10 text-white/30 py-0 h-4">{item.market}</Badge>
           </div>
-          <span className={`text-xs font-data font-medium ${item.change_24h >= 0 ? 'text-[#00FF94]' : 'text-[#FF2E2E]'}`}>
+          <span className={`text-xs font-data font-medium ${item.change_24h >= 0 ? 'text-[#10B981]' : 'text-[#EF4444]'}`}>
             {item.change_24h >= 0 ? '+' : ''}{item.change_24h?.toFixed(2)}%
           </span>
         </div>
@@ -163,20 +163,20 @@ export default function DashboardPage() {
       {market_status && (!market_status.forex?.open || !market_status.indian?.open) && (
         <div className="flex flex-wrap items-center gap-3 px-4 py-2.5 rounded-lg bg-[#EAB308]/[0.04] border border-[#EAB308]/15" data-testid="market-status-bar">
           <span className="text-[10px] text-[#EAB308]/70 font-medium uppercase tracking-wider">Market Hours</span>
-          <div className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-[#00FF94]" /><span className="text-[10px] text-white/50 font-data">Crypto 24/7</span></div>
-          <div className="flex items-center gap-1.5"><div className={`w-1.5 h-1.5 rounded-full ${market_status.forex?.open ? 'bg-[#00FF94]' : 'bg-[#EAB308]'}`} /><span className={`text-[10px] font-data ${market_status.forex?.open ? 'text-white/50' : 'text-[#EAB308]/70'}`}>Forex {market_status.forex?.label}</span></div>
-          <div className="flex items-center gap-1.5"><div className={`w-1.5 h-1.5 rounded-full ${market_status.indian?.open ? 'bg-[#00FF94]' : 'bg-[#EAB308]'}`} /><span className={`text-[10px] font-data ${market_status.indian?.open ? 'text-white/50' : 'text-[#EAB308]/70'}`}>NSE {market_status.indian?.label}</span></div>
+          <div className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-[#10B981]" /><span className="text-[10px] text-white/50 font-data">Crypto 24/7</span></div>
+          <div className="flex items-center gap-1.5"><div className={`w-1.5 h-1.5 rounded-full ${market_status.forex?.open ? 'bg-[#10B981]' : 'bg-[#EAB308]'}`} /><span className={`text-[10px] font-data ${market_status.forex?.open ? 'text-white/50' : 'text-[#EAB308]/70'}`}>Forex {market_status.forex?.label}</span></div>
+          <div className="flex items-center gap-1.5"><div className={`w-1.5 h-1.5 rounded-full ${market_status.indian?.open ? 'bg-[#10B981]' : 'bg-[#EAB308]'}`} /><span className={`text-[10px] font-data ${market_status.indian?.open ? 'text-white/50' : 'text-[#EAB308]/70'}`}>NSE {market_status.indian?.label}</span></div>
         </div>
       )}
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="glass-panel border-white/10 card-hover" data-testid="portfolio-value-card">
-          <CardContent className="p-5">
+          <CardContent className="p-4 sm:p-5">
             <p className="text-[10px] text-white/40 uppercase tracking-wider mb-1">Portfolio Value</p>
-            <p className="text-xl font-bold text-white font-data">{fmtNum(livePortfolioValue)}</p>
+            <p className="value-lg text-white">{fmtNum(livePortfolioValue)}</p>
             {portfolio.total_invested > 0 && (
-              <p className={`text-xs font-data mt-1 ${portfolioPnL >= 0 ? 'text-[#00FF94]' : 'text-[#FF2E2E]'}`}>
+              <p className={`text-xs font-data mt-1 ${portfolioPnL >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                 {portfolioPnL >= 0 ? '+' : ''}{fmtNum(Math.abs(portfolioPnL))} ({portfolioPnLPct.toFixed(2)}%)
               </p>
             )}
@@ -184,26 +184,26 @@ export default function DashboardPage() {
         </Card>
 
         <Card className="glass-panel border-white/10 card-hover" data-testid="signals-count-card">
-          <CardContent className="p-5">
+          <CardContent className="p-4 sm:p-5">
             <p className="text-[10px] text-white/40 uppercase tracking-wider mb-1">Active Signals</p>
-            <p className="text-xl font-bold text-white font-data">{signals.length}</p>
+            <p className="value-lg text-white">{signals.length}</p>
             <Badge variant="outline" className="mt-1 bg-[#6366F1]/10 text-[#6366F1] border-[#6366F1]/20 text-[10px]">AI Powered</Badge>
           </CardContent>
         </Card>
 
         <Card className="glass-panel border-white/10 card-hover" data-testid="total-assets-card">
-          <CardContent className="p-5">
+          <CardContent className="p-4 sm:p-5">
             <p className="text-[10px] text-white/40 uppercase tracking-wider mb-1">Tracked Assets</p>
-            <p className="text-xl font-bold text-white font-data">{crypto.length + forex.length + indian.length}</p>
+            <p className="value-lg text-white">{crypto.length + forex.length + indian.length}</p>
             <span className="text-[10px] text-white/30 font-data">{crypto.length}C / {forex.length}F / {indian.length}I</span>
           </CardContent>
         </Card>
 
         <Card className="glass-panel border-white/10 card-hover" data-testid="market-cap-card">
-          <CardContent className="p-5">
+          <CardContent className="p-4 sm:p-5">
             <p className="text-[10px] text-white/40 uppercase tracking-wider mb-1">Crypto Market Cap</p>
-            <p className="text-xl font-bold text-white font-data">{sentiment ? fmtNum(sentiment.total_market_cap) : '...'}</p>
-            {sentiment && <span className={`text-[10px] font-data ${sentiment.market_cap_change_24h >= 0 ? 'text-[#00FF94]' : 'text-[#FF2E2E]'}`}>
+            <p className="value-lg text-white">{sentiment ? fmtNum(sentiment.total_market_cap) : '...'}</p>
+            {sentiment && <span className={`text-[10px] font-data ${sentiment.market_cap_change_24h >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
               {sentiment.market_cap_change_24h >= 0 ? '+' : ''}{sentiment.market_cap_change_24h?.toFixed(2)}% 24h
             </span>}
           </CardContent>
@@ -221,7 +221,7 @@ export default function DashboardPage() {
                 <CardTitle className="text-sm text-white/80 flex items-center gap-2">
                   <Activity className="w-4 h-4 text-[#6366F1]" /> Bitcoin 7D
                   {crypto.find(c => c.id === 'bitcoin') && (
-                    <span className={`font-data text-sm ml-2 ${priceChanges['bitcoin'] === 'up' ? 'text-[#00FF94]' : priceChanges['bitcoin'] === 'down' ? 'text-[#FF2E2E]' : 'text-white'}`}>
+                    <span className={`font-data text-sm ml-2 ${priceChanges['bitcoin'] === 'up' ? 'text-emerald-400' : priceChanges['bitcoin'] === 'down' ? 'text-red-400' : 'text-white'}`}>
                       {fmtPrice(crypto.find(c => c.id === 'bitcoin')?.price)}
                     </span>
                   )}
@@ -278,7 +278,7 @@ export default function DashboardPage() {
                     </div>
                     <div className="text-right">
                       <p className="text-sm text-white font-data price-value">{fmtPrice(coin.price)}</p>
-                      <p className={`text-[10px] font-data ${coin.change_24h >= 0 ? 'text-[#00FF94]' : 'text-[#FF2E2E]'}`}>
+                      <p className={`text-[10px] font-data ${coin.change_24h >= 0 ? 'text-[#10B981]' : 'text-[#EF4444]'}`}>
                         {coin.change_24h >= 0 ? '+' : ''}{coin.change_24h?.toFixed(2)}%
                       </p>
                     </div>
@@ -331,7 +331,7 @@ export default function DashboardPage() {
                       <div className="flex items-center justify-between mb-1">
                         <span className="text-xs font-medium text-white">{sig.asset_name}</span>
                         <div className="flex items-center gap-1.5">
-                          <Badge className={`text-[10px] ${sig.direction === 'BUY' ? 'bg-[#00FF94]/10 text-[#00FF94]' : 'bg-[#FF2E2E]/10 text-[#FF2E2E]'}`}>{sig.direction}</Badge>
+                          <Badge className={`text-[10px] ${sig.direction === 'BUY' ? 'bg-[#10B981]/10 text-[#10B981]' : 'bg-[#EF4444]/10 text-[#EF4444]'}`}>{sig.direction}</Badge>
                           <span className="text-[10px] font-data text-[#6366F1]">{sig.confidence}%</span>
                           <span className="text-[10px] font-data text-white/40">{sig.grade}</span>
                         </div>
@@ -366,7 +366,7 @@ export default function DashboardPage() {
                   <div className="flex items-center gap-2">
                     <span className="text-[10px] font-data text-white/40">{pair.bid ? (pair.bid < 50 ? pair.bid.toFixed(5) : pair.bid.toFixed(2)) : ''}</span>
                     <span className="text-xs font-data text-white price-value font-medium">{pair.ask ? (pair.ask < 50 ? pair.ask.toFixed(5) : pair.ask.toFixed(2)) : (pair.price < 50 ? pair.price.toFixed(4) : pair.price.toFixed(2))}</span>
-                    <span className={`text-[10px] font-data ${pair.change_24h >= 0 ? 'text-[#00FF94]' : 'text-[#FF2E2E]'}`}>
+                    <span className={`text-[10px] font-data ${pair.change_24h >= 0 ? 'text-[#10B981]' : 'text-[#EF4444]'}`}>
                       {pair.change_24h >= 0 ? '+' : ''}{pair.change_24h?.toFixed(2)}%
                     </span>
                   </div>

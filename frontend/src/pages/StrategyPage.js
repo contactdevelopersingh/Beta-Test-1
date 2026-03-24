@@ -164,7 +164,7 @@ export default function StrategyPage() {
                     </SelectContent>
                   </Select>
                   {rules.length > 1 && (
-                    <Button variant="ghost" size="icon" className="w-7 h-7 text-white/30 hover:text-[#FF2E2E] shrink-0" onClick={() => removeRule(idx)}>
+                    <Button variant="ghost" size="icon" className="w-7 h-7 text-white/30 hover:text-[#EF4444] shrink-0" onClick={() => removeRule(idx)}>
                       <Trash2 className="w-3 h-3" />
                     </Button>
                   )}
@@ -198,7 +198,7 @@ export default function StrategyPage() {
                   <div>
                     <div className="flex items-center gap-2">
                       <span className="text-sm text-white font-medium">{strat.name}</span>
-                      <Badge className="bg-[#00FF94]/10 text-[#00FF94] text-[9px]">{strat.status}</Badge>
+                      <Badge className="bg-[#10B981]/10 text-[#10B981] text-[9px]">{strat.status}</Badge>
                     </div>
                     <div className="flex gap-1.5 mt-1.5">
                       {strat.rules.map((r, ri) => (
@@ -209,7 +209,7 @@ export default function StrategyPage() {
                     </div>
                   </div>
                   <div className="flex items-center gap-1">
-                    <Button variant="ghost" size="icon" className="w-7 h-7 text-white/30 hover:text-[#FF2E2E]" onClick={() => deleteStrategy(strat.id)}>
+                    <Button variant="ghost" size="icon" className="w-7 h-7 text-white/30 hover:text-[#EF4444]" onClick={() => deleteStrategy(strat.id)}>
                       <Trash2 className="w-3.5 h-3.5" />
                     </Button>
                   </div>
