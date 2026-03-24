@@ -36,7 +36,27 @@
     </head>
     <body>
         <noscript>You need to enable JavaScript to run this app.</noscript>
-        <div id="root"></div>
+        <div id="root">
+            <div id="titan-splash" style="position:fixed;inset:0;background:#050505;display:flex;align-items:center;justify-content:center;z-index:99999;flex-direction:column;gap:16px;">
+                <div style="display:flex;align-items:center;gap:10px;">
+                    <svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <rect width="36" height="36" rx="8" fill="#6366F1"/>
+                        <path d="M10 12L18 8L26 12V20L18 28L10 20V12Z" stroke="white" stroke-width="2" fill="none"/>
+                        <path d="M18 8V28M10 12L26 20M26 12L10 20" stroke="white" stroke-width="1.5" opacity="0.4"/>
+                    </svg>
+                    <div>
+                        <div style="font-family:'Manrope',system-ui,sans-serif;font-size:20px;font-weight:800;color:#fff;letter-spacing:-0.02em;">TITAN TRADE</div>
+                        <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:#6366F1;letter-spacing:0.2em;">TRADING INTELLIGENCE</div>
+                    </div>
+                </div>
+                <div style="width:120px;height:2px;background:#1a1a2e;border-radius:2px;overflow:hidden;">
+                    <div style="width:40%;height:100%;background:#6366F1;border-radius:2px;animation:splash-load 1.2s ease-in-out infinite;"></div>
+                </div>
+                <style>
+                    @keyframes splash-load{0%{width:10%;margin-left:0}50%{width:60%;margin-left:20%}100%{width:10%;margin-left:90%}}
+                </style>
+            </div>
+        </div>
         <!--
       This HTML file is a template.
       If you open it directly in the browser, you will see an empty page.
@@ -52,25 +72,15 @@
             target="_blank"
             href="https://app.emergent.sh/?utm_source=emergent-badge"
             style="
-                display: inline-flex !important;
-                box-sizing: border-box;
-                width: 178px;
-                height: 40px;
-                padding: 8px 12px 8px 12px;
-                align-items: center !important;
-                gap: 8px;
-                border-radius: 50px !important;
-                background: #000 !important;
-                position: fixed !important;
-                bottom: 16px;
-                right: 16px;
-                text-decoration: none;
-                font-family: -apple-system, BlinkMacSystemFont,
-                    &quot;Segoe UI&quot;, Roboto, Oxygen, Ubuntu, Cantarell,
-                    &quot;Open Sans&quot;, &quot;Helvetica Neue&quot;,
-                    sans-serif !important;
-                font-size: 12px !important;
-                z-index: 9999 !important;
+                display: none !important;
+                visibility: hidden !important;
+                opacity: 0 !important;
+                width: 0 !important;
+                height: 0 !important;
+                overflow: hidden !important;
+                position: absolute !important;
+                left: -9999px !important;
+                pointer-events: none !important;
             "
         >
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none">

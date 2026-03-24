@@ -18,6 +18,9 @@ from pathlib import Path
 from pydantic import BaseModel, Field, ConfigDict
 from typing import List, Optional, Dict
 from emergentintegrations.llm.chat import LlmChat, UserMessage
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 import yfinance as yf
 
 ROOT_DIR = Path(__file__).parent
@@ -32,6 +35,8 @@ db = client[os.environ['DB_NAME']]
 JWT_SECRET = os.environ.get('JWT_SECRET', 'titan-trade-jwt-secret-2026')
 JWT_ALGORITHM = 'HS256'
 EMERGENT_LLM_KEY = os.environ.get('EMERGENT_LLM_KEY')
+GMAIL_USER = os.environ.get('GMAIL_USER')
+GMAIL_PASSWORD = os.environ.get('GMAIL_PASSWORD')
 COINGECKO_BASE = 'https://api.coingecko.com/api/v3'
 CRYPTOCOMPARE_BASE = 'https://min-api.cryptocompare.com/data'
 KRAKEN_BASE = 'https://api.kraken.com/0/public'
@@ -1512,6 +1517,85 @@ PLAN_DURATIONS = {
     "monthly": 30,
 }
 
+PLAN_FEATURES = {
+    "free": ["5 AI signals/day", "Basic market data", "Single timeframe"],
+    "basic": ["5 AI signals/day", "Crypto + Forex data", "Price alerts (10)", "Trade Journal", "Single timeframe analysis"],
+    "pro": ["25 AI signals/day", "All markets (Crypto + Forex + Indian)", "Multi-timeframe analysis", "10 Strategy templates", "SL/TP & holding duration", "Titan AI Chat (100 msgs/day)", "Unlimited price alerts", "Priority support"],
+    "titan": ["Unlimited AI signals", "All markets + real-time streaming", "All timeframes + confluence scoring", "All strategies + custom strategies", "Advanced SL/TP with invalidation", "Unlimited Titan AI Chat", "Portfolio analytics + P&L tracking", "Dedicated support + early features"],
+}
+
+PLAN_PRICES = {
+    "free": {"weekly": "Free", "monthly": "Free"},
+    "basic": {"weekly": "INR 499/week", "monthly": "INR 1,499/month"},
+    "pro": {"weekly": "INR 999/week", "monthly": "INR 3,499/month"},
+    "titan": {"weekly": "INR 1,999/week", "monthly": "INR 6,999/month"},
+}
+
+def send_plan_email(to_email: str, user_name: str, plan_name: str, billing_cycle: str, expires_at: str):
+    """Send professional plan confirmation email via Gmail SMTP"""
+    if not GMAIL_USER or not GMAIL_PASSWORD:
+        logger.warning("Gmail credentials not configured, skipping email")
+        return False
+    try:
+        features = PLAN_FEATURES.get(plan_name, [])
+        price = PLAN_PRICES.get(plan_name, {}).get(billing_cycle, "N/A")
+        features_html = "".join([f'<li style="padding:4px 0;color:#d1d5db;">{f}</li>' for f in features])
+
+        html = f"""
+<!DOCTYPE html>
+<html>
+<body style="margin:0;padding:0;background:#0a0a0f;font-family:'Segoe UI',Arial,sans-serif;">
+<div style="max-width:520px;margin:0 auto;padding:32px 24px;">
+  <div style="text-align:center;padding-bottom:24px;border-bottom:1px solid #1f2937;">
+    <h1 style="margin:0;color:#fff;font-size:22px;font-weight:800;letter-spacing:-0.02em;">TITAN TRADE</h1>
+    <p style="margin:4px 0 0;color:#6366F1;font-size:10px;letter-spacing:0.2em;">TRADING INTELLIGENCE</p>
+  </div>
+  <div style="padding:28px 0;">
+    <h2 style="color:#00FF94;font-size:18px;margin:0 0 8px;">Plan Activated</h2>
+    <p style="color:#9ca3af;font-size:14px;margin:0 0 20px;">Hello {user_name or 'Trader'},</p>
+    <p style="color:#d1d5db;font-size:14px;line-height:1.6;margin:0 0 20px;">
+      Your <strong style="color:#fff;text-transform:capitalize;">{plan_name}</strong> plan has been successfully activated.
+    </p>
+    <div style="background:#111827;border:1px solid #1f2937;border-radius:12px;padding:20px;margin-bottom:20px;">
+      <table style="width:100%;border-collapse:collapse;">
+        <tr><td style="color:#6b7280;font-size:12px;padding:6px 0;">Plan</td><td style="color:#fff;font-size:14px;font-weight:600;text-align:right;text-transform:capitalize;">{plan_name}</td></tr>
+        <tr><td style="color:#6b7280;font-size:12px;padding:6px 0;">Billing</td><td style="color:#fff;font-size:14px;text-align:right;text-transform:capitalize;">{billing_cycle}</td></tr>
+        <tr><td style="color:#6b7280;font-size:12px;padding:6px 0;">Price</td><td style="color:#6366F1;font-size:14px;font-weight:600;text-align:right;">{price}</td></tr>
+        <tr><td style="color:#6b7280;font-size:12px;padding:6px 0;">Valid Until</td><td style="color:#FFD700;font-size:14px;text-align:right;">{expires_at[:10]}</td></tr>
+      </table>
+    </div>
+    <div style="margin-bottom:20px;">
+      <p style="color:#9ca3af;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.1em;margin:0 0 8px;">Your Features:</p>
+      <ul style="margin:0;padding:0 0 0 20px;font-size:13px;line-height:1.8;">{features_html}</ul>
+    </div>
+    <p style="color:#6b7280;font-size:12px;line-height:1.6;margin:0;">
+      Start trading now at <a href="https://titantrade.preview.emergentagent.com/dashboard" style="color:#6366F1;text-decoration:none;">Titan Trade</a>. 
+      For support, call <strong style="color:#d1d5db;">+91 8102126223</strong> or <strong style="color:#d1d5db;">+91 8867678750</strong>.
+    </p>
+  </div>
+  <div style="border-top:1px solid #1f2937;padding-top:16px;text-align:center;">
+    <p style="color:#4b5563;font-size:10px;margin:0;">Titan Trade | Trading Intelligence Platform</p>
+    <p style="color:#374151;font-size:9px;margin:4px 0 0;">Not financial advice. Always DYOR.</p>
+  </div>
+</div>
+</body>
+</html>"""
+
+        msg = MIMEMultipart('alternative')
+        msg['Subject'] = f"Titan Trade - Your {plan_name.capitalize()} Plan is Active"
+        msg['From'] = f"Titan Trade <{GMAIL_USER}>"
+        msg['To'] = to_email
+        msg.attach(MIMEText(html, 'html'))
+
+        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
+            server.login(GMAIL_USER, GMAIL_PASSWORD)
+            server.send_message(msg)
+        logger.info(f"Plan email sent to {to_email}")
+        return True
+    except Exception as e:
+        logger.error(f"Failed to send plan email to {to_email}: {e}")
+        return False
+
 @api_router.post("/admin/plans/assign")
 async def assign_plan(data: PlanAssignment, admin: dict = Depends(get_admin_user)):
     target_user = await db.users.find_one({"email": data.email}, {"_id": 0})
@@ -1544,7 +1628,19 @@ async def assign_plan(data: PlanAssignment, admin: dict = Depends(get_admin_user
         {"$set": plan_doc},
         upsert=True
     )
-    return {"message": f"Plan '{data.plan_name}' ({data.billing_cycle}) assigned to {data.email}", "plan": plan_doc}
+    # Send professional confirmation email
+    email_sent = False
+    try:
+        email_sent = send_plan_email(
+            to_email=data.email,
+            user_name=target_user.get('name', ''),
+            plan_name=data.plan_name,
+            billing_cycle=data.billing_cycle,
+            expires_at=expires.isoformat()
+        )
+    except Exception as e:
+        logger.error(f"Email sending error: {e}")
+    return {"message": f"Plan '{data.plan_name}' ({data.billing_cycle}) assigned to {data.email}", "email_sent": email_sent, "plan": plan_doc}
 
 @api_router.get("/admin/plans")
 async def get_all_plans(admin: dict = Depends(get_admin_user)):

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
@@ -7,15 +8,21 @@ import { Label } from '../components/ui/label';
 import { Switch } from '../components/ui/switch';
 import { Separator } from '../components/ui/separator';
 import { Avatar, AvatarFallback } from '../components/ui/avatar';
-import { User, Bell, Shield, Palette, Save } from 'lucide-react';
+import { User, Bell, Shield, Palette, Save, LogOut } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function SettingsPage() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const [notifications, setNotifications] = useState({ signals: true, portfolio: true, news: false, priceAlerts: true });
 
   const handleSave = () => {
     toast.success('Settings saved');
+  };
+
+  const handleLogout = async () => {
+    await logout();
+    navigate('/');
   };
 
   return (
@@ -135,6 +142,31 @@ export default function SettingsPage() {
       <Button className="bg-[#6366F1] hover:bg-[#4F46E5] text-white shadow-[0_0_15px_rgba(99,102,241,0.4)] active:scale-95 text-xs uppercase tracking-wide font-semibold" onClick={handleSave} data-testid="save-settings-btn">
         <Save className="w-3.5 h-3.5 mr-1.5" /> Save Changes
       </Button>
+
+      {/* Logout */}
+      <Card className="glass-panel border-white/10 border-l-2 border-l-[#FF2E2E]" data-testid="logout-card">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm text-white/80 flex items-center gap-2">
+            <LogOut className="w-4 h-4 text-[#FF2E2E]" /> Session
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-white">Log Out</p>
+              <p className="text-xs text-white/30">Sign out of your Titan Trade account</p>
+            </div>
+            <Button
+              variant="outline"
+              className="border-[#FF2E2E]/30 text-[#FF2E2E] hover:bg-[#FF2E2E]/10 hover:border-[#FF2E2E]/50 text-xs"
+              onClick={handleLogout}
+              data-testid="logout-btn"
+            >
+              <LogOut className="w-3.5 h-3.5 mr-1.5" /> Log Out
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
