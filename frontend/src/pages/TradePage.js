@@ -31,6 +31,7 @@ export default function TradePage() {
   const [units, setUnits] = useState('1000');
   const [usdAmount, setUsdAmount] = useState('');
   const [sizeMode, setSizeMode] = useState('units'); // units or usd
+  const [leverage, setLeverage] = useState('1');
   const [orderType, setOrderType] = useState('MARKET');
   const [stopLoss, setStopLoss] = useState('');
   const [takeProfit, setTakeProfit] = useState('');
@@ -79,8 +80,9 @@ export default function TradePage() {
     }
     setPlacing(true);
     try {
-      const u = sizeMode === 'units' ? parseInt(units) * (direction === 'SELL' ? -1 : 1) : undefined;
-      const usd = sizeMode === 'usd' ? parseFloat(usdAmount) * (direction === 'SELL' ? -1 : 1) : undefined;
+      const lev = parseInt(leverage) || 1;
+      const u = sizeMode === 'units' ? parseInt(units) * lev * (direction === 'SELL' ? -1 : 1) : undefined;
+      const usd = sizeMode === 'usd' ? parseFloat(usdAmount) * lev * (direction === 'SELL' ? -1 : 1) : undefined;
       const body = {
         instrument,
         units: u || undefined,
@@ -212,11 +214,37 @@ export default function TradePage() {
             </div>
 
             <div>
+              <label className="text-[11px] text-white/40 uppercase mb-1.5 block">Leverage</label>
+              <div className="flex gap-1" data-testid="leverage-selector">
+                {['1', '10', '50', '100'].map(lev => (
+                  <button key={lev} onClick={() => setLeverage(lev)}
+                    className={`flex-1 px-2 py-1.5 rounded text-xs font-medium border transition-all ${
+                      leverage === lev
+                        ? 'bg-[#6366F1]/20 border-[#6366F1]/50 text-[#6366F1] shadow-[0_0_6px_rgba(99,102,241,0.15)]'
+                        : 'bg-white/5 border-white/10 text-white/40 hover:text-white/60'
+                    }`}
+                    data-testid={`leverage-${lev}`}
+                  >
+                    1:{lev}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
               <label className="text-[11px] text-white/40 uppercase mb-1.5 block">{sizeMode === 'units' ? 'Units' : 'USD Amount'}</label>
               {sizeMode === 'units' ? (
                 <Input type="number" value={units} onChange={e => setUnits(e.target.value)} placeholder="1000" className="bg-white/[0.03] border-white/10 text-white" data-testid="units-input" />
               ) : (
                 <Input type="number" value={usdAmount} onChange={e => setUsdAmount(e.target.value)} placeholder="100.00" className="bg-white/[0.03] border-white/10 text-white" data-testid="usd-input" />
+              )}
+              {parseInt(leverage) > 1 && (
+                <p className="text-[10px] text-[#6366F1] mt-1 font-data" data-testid="effective-size">
+                  Effective size: {sizeMode === 'units'
+                    ? `${(parseInt(units || 0) * parseInt(leverage)).toLocaleString()} units`
+                    : `$${(parseFloat(usdAmount || 0) * parseInt(leverage)).toLocaleString()}`
+                  } (1:{leverage} leverage)
+                </p>
               )}
             </div>
 
