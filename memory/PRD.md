@@ -8,113 +8,81 @@ Rebranded from "SignalBeast Pro" to "Titan Trade" on Mar 24, 2026.
 - **Backend:** FastAPI + MongoDB (motor) + OANDA API + Kraken API + yfinance
 - **Frontend:** React + Tailwind CSS + shadcn/ui + lightweight-charts
 - **AI:** OpenAI GPT-4o via Emergent LLM Key (branded as "Titan AI")
-- **Auth:** JWT (email/password) + Google OAuth2
+- **Auth:** JWT (email/password) + Google OAuth2 + TOTP 2FA
 - **Email:** Gmail SMTP (contact.developersingh@gmail.com)
 
 ## Admin Access
 - **Email:** contact.developersingh@gmail.com
 - **Password:** admin123
-- **Route:** `/admin` (hidden from sidebar, URL-only access)
+- **Route:** `/admin` (hidden from sidebar)
 
 ## Implemented Features
 
-### Full Rebrand (Completed: Mar 24, 2026)
-- SignalBeast Pro -> Titan Trade (all pages, SEO, metadata)
-- Beast AI -> Titan AI (chat, sidebar, backend prompts)
-- Custom splash screen, Emergent badge hidden
-- localStorage token key: titan_trade_token
+### Trading Strategies (Completed: Mar 25, 2026)
+**29 Forex Strategies:** ICT, SMC, MSNR, CRT, FVG+OB, BOS, CHoCH, Liquidity Grab, Inducement, Premium/Discount Zones, Kill Zones, SMT Divergence, Breaker Block, Mitigation Block, Supply & Demand, S/R Flip, Trendline Liquidity, EQH/EQL, Asian Range + London Breakout, Session Bias, EMA Crossover, RSI Divergence, MACD, Bollinger, Ichimoku, Fibonacci, Price Action, VWAP + Auto
 
-### Plan Management + Email (Completed: Mar 24, 2026)
-- Admin assigns plans (free/basic/pro/titan) by email
-- Billing cycles: weekly (7d) or monthly (30d)
-- Custom duration in days or hours
-- Auto-expiry, revoke capability
-- Professional HTML email sent via Gmail SMTP
+**29 Crypto Strategies:** On-Chain Analysis, Whale Activity, Order Book, Liquidity Heatmaps, Funding Rate, Open Interest, Long/Short Ratio, Liquidation Zones, Perp Futures Imbalance, Market Maker, Breakout+Fakeout, Range Scalping, Trend Following, Volume Profile, VWAP Bounce, RSI Divergence, Momentum Scalping, News Volatility, Altcoin Rotation, BTC Dominance + shared strategies
+
+**Combo Mode:** Users can select multiple strategies to combine (e.g., SMC + ICT + CRT)
+
+### Extended Timeframes (Completed: Mar 25, 2026)
+13 timeframes: 1m, 3m, 5m, 10m, 15m, 30m, 1H, 2H, 3H, 4H, 1D, 3D, 1W
+- Free users: max 2 timeframes
+- Pro/Titan: unlimited
+
+### Manual Risk:Reward Ratio (Completed: Mar 25, 2026)
+- Users can specify custom R:R (e.g., 1:2.5) in signal generation
+
+### Two-Factor Authentication (Completed: Mar 25, 2026)
+- TOTP-based 2FA with QR code setup
+- Google Authenticator / Authy compatible
+- Enable/Disable from Settings page
+
+### Custom Strategy Builder (Completed: Mar 25, 2026)
+- Create/save custom combo strategies
+- Select multiple techniques to combine
+- Filter by market type
+- Full CRUD via /strategies/custom
+
+### Signal-to-Trade Push (Completed: Mar 25, 2026)
+- "Execute as Trade" button on forex signals
+- Pushes signal parameters directly to OANDA
+- Requires Titan plan
+
+### USD-Based Trading (Completed: Mar 25, 2026)
+- Trade by units OR USD amount
+- Toggle between sizing modes on Trade page
+
+### Auth Page Rebranding (Completed: Mar 25, 2026)
+- "LOG IN TO Titan Trade" branding on login page
 
 ### Plan-Based Feature Gating (Completed: Mar 25, 2026)
-- Free: 3 signals/day, 10 chat msgs/day, no multi-TF, 5 alerts
-- Basic: 5 signals/day, 50 chat msgs/day, 4 strategies, 10 alerts
-- Pro: 25 signals/day, 100 chat msgs/day, multi-TF, all strategies, 50 alerts
-- Titan: Unlimited signals, unlimited chat, multi-TF, trade execution, unlimited alerts
-- Plan usage badge shown on Signals page and enforced on backend endpoints
+- Free: 3 signals/day, 10 chat, 2 TF max, 5 alerts, basic strategies
+- Basic: 5 signals/day, 50 chat, 4 strategies, 10 alerts
+- Pro: 25 signals/day, 100 chat, multi-TF, all strategies, 50 alerts
+- Titan: Unlimited, trade execution, all features
 
 ### OANDA Trade Execution (Completed: Mar 25, 2026)
-- Place MARKET/LIMIT/STOP orders via OANDA REST API
-- View open positions with unrealized P&L
-- Close positions per instrument
-- Account summary (balance, NAV, margin)
-- Trade execution history tracking
-- Requires Titan plan
-- Practice account: $100,000 USD
+- MARKET/LIMIT/STOP orders, positions, account summary
+- Practice account: $100K USD
 
 ### Community & Leaderboard (Completed: Mar 25, 2026)
-- Leaderboard page ranking traders by total P&L
-- Tier system: bronze, silver, gold, platinum, diamond
-- Badge system: First Trade, Active Trader, Veteran Trader, Winning Streak, 1K Club, 10K Club, Signal Hunter, Sharpshooter
-- Community stats: total traders, signals generated, win rate
-- Personal stats with rank and earned badges
+- Leaderboard, badges, tiers, community stats
 
-### SEO Implementation (Completed: Mar 25, 2026)
-- XML Sitemap at /api/sitemap.xml
-- robots.txt in frontend public
-- JSON-LD schema markup (SoftwareApplication)
-- Canonical URL, meta tags, Open Graph, Twitter Cards
-
-### Pricing (Updated: Mar 24, 2026)
-- Weekly/Monthly toggle
-- Basic: INR 499/week, INR 1,499/month
-- Pro: INR 999/week, INR 3,499/month
-- Titan: INR 1,999/week, INR 6,999/month
-
-### Advanced Signal Generation
-- Multi-timeframe analysis (3+ TFs)
-- 10 trading strategies, SL/TP1/TP2/TP3, holding duration, confluence scoring
-- Plan gating on strategies and multi-TF
-
-### Platform Features
-- Trade Journal (CRUD + emotions + star ratings + P&L)
-- Admin Panel (hidden, stats/users/plans/signals/system tabs)
-- Mobile-first responsive SaaS UI with dark theme
-- Logout, WhatsApp CTAs on pricing, splash screen
+### Full Rebrand, Email, SEO, UI/UX
+- All completed in previous sessions
 
 ## Key API Endpoints
-- Plan Management: POST /api/admin/plans/assign, GET /api/admin/plans, DELETE /api/admin/plans/{user_id}, GET /api/user/plan, GET /api/user/plan-usage
-- Signals: GET /api/signals/strategies, POST /api/signals/generate, GET /api/signals
-- Journal: GET/POST/PUT/DELETE /api/journal, GET /api/journal/stats
-- Admin: GET /api/admin/stats|users|system|signals
-- Trade: POST /api/trade/order, GET /api/trade/positions, GET /api/trade/account, POST /api/trade/close/{instrument}, GET /api/trade/history
-- Community: GET /api/community/leaderboard, GET /api/community/stats, GET /api/community/my-stats
-- SEO: GET /api/sitemap.xml
+- Strategies: GET /api/signals/strategies?market=forex|crypto|indian
+- Custom: GET/POST/DELETE /api/strategies/custom
+- 2FA: POST /api/auth/2fa/setup|verify|disable, GET /api/auth/2fa/status
+- Signal Execute: POST /api/signals/{id}/execute
+- Trade: POST /api/trade/order (units + usd_amount)
+- Plan: GET /api/user/plan-usage
 
 ## Database Collections
-users, signals, trade_journal, alerts, notifications, chat_history, portfolio, watchlist, user_plans, trade_executions, user_sessions
-
-## Code Architecture
-```
-/app/backend/
-  server.py          # Main FastAPI app with all routes
-  models/schemas.py  # Extracted Pydantic models
-  services/email_service.py  # Email sending service
-  routes/             # Future route extraction
-  tests/              # pytest test files
-
-/app/frontend/src/
-  App.js              # Router
-  context/AuthContext.js
-  components/AppLayout.js
-  pages/
-    DashboardPage.js, SignalsPage.js, MarketsPage.js,
-    PortfolioPage.js, AlertsPage.js, ChartPage.js,
-    StrategyPage.js, ChatPage.js, JournalPage.js,
-    AdminPage.js, PricingPage.js, SettingsPage.js,
-    LeaderboardPage.js, TradePage.js, LandingPage.js
-```
-
-## Credentials
-- Admin: contact.developersingh@gmail.com / admin123
-- Gmail SMTP: App Password in backend/.env
-- OANDA API: in backend/.env
+users, signals, trade_journal, alerts, notifications, chat_history, portfolio, watchlist, user_plans, trade_executions, user_sessions, custom_strategies
 
 ## Known Platform Limitations
-- Google OAuth consent screen shows "Signal Beast Pro" / "Emergent" - platform-level, cannot change from app code
-- Preview URL subdomain is platform-level, cannot change
+- Google OAuth consent screen branding is platform-level (auth.emergentagent.com)
+- Preview URL subdomain is platform-level

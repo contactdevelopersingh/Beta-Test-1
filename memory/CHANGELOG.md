@@ -1,6 +1,43 @@
 # Titan Trade - Changelog
 
-## Mar 25, 2026 - Feature Expansion (Fork Job)
+## Mar 25, 2026 - Massive Strategy & Feature Expansion (Fork Job 2)
+### Expanded Trading Strategies
+- 29 Forex Strategies: ICT, SMC, MSNR, CRT, FVG+OB, BOS, CHoCH, Liquidity Grab, Inducement, Premium/Discount Zones, Kill Zones, SMT Divergence, Breaker Block, Mitigation Block, Supply & Demand, S/R Flip, Trendline Liquidity, EQH/EQL, Asian+London, Session Bias + universal strategies
+- 29 Crypto Strategies: On-Chain, Whale Activity, Order Book, Liquidity Heatmaps, Funding Rate, Open Interest, Long/Short Ratio, Liquidation Zones, Perp Imbalance, Market Maker, Breakout+Fakeout, Range Scalping, Trend Following, Volume Profile, VWAP Bounce, Momentum Scalping, News Volatility, Altcoin Rotation, BTC Dominance + universal
+- Market-specific strategy filtering via ?market= parameter
+- Combo Strategy Mode: Select multiple strategies to combine
+
+### Extended Timeframes
+- Added: 1m, 3m, 10m, 30m, 2H, 3H, 3D (total 13 timeframes)
+- Free user limit: max 2 timeframes
+
+### Manual Risk:Reward Ratio
+- New input in Advanced Options for custom R:R (e.g., 1:2.5)
+- Passed to AI prompt for strict enforcement
+
+### Two-Factor Authentication (2FA)
+- TOTP-based using pyotp + qrcode
+- Endpoints: setup, verify, disable, status
+- Full UI flow in Settings with QR code display
+
+### Custom Strategy Builder
+- Replaced old Strategy page with full builder
+- Create/save/delete custom combo strategies
+- Select from all available strategies per market
+
+### Signal-to-Trade Push
+- "Execute as Trade" button on forex signals
+- POST /api/signals/{id}/execute pushes to OANDA
+- Maps signal direction, SL, TP to order
+
+### USD-Based Trading
+- Units/USD toggle on Trade page
+- Backend converts USD to units based on live price
+
+### Auth Page Rebranding
+- "LOG IN TO Titan Trade" branding
+
+## Mar 25, 2026 - Feature Expansion (Fork Job 1)
 ### Plan-Based Feature Gating
 - Implemented PLAN_LIMITS system: free/basic/pro/titan tiers
 - Added daily usage tracking for signals and chat messages
