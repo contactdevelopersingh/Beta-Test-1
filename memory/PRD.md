@@ -12,8 +12,8 @@ Rebranded from "SignalBeast Pro" to "Titan Trade" on Mar 24, 2026.
 - **Email:** Gmail SMTP (contact.developersingh@gmail.com)
 
 ## Admin Access
-- **Email:** contact.developersingh@gmail.com
-- **Password:** admin123
+- **Admin 1:** contact.developersingh@gmail.com / admin123
+- **Admin 2:** infinityanirudra@gmail.com / admin456
 - **Route:** `/admin` (hidden from sidebar)
 
 ## Implemented Features

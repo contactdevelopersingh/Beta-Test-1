@@ -1,5 +1,33 @@
 # Titan Trade - Changelog
 
+## Mar 25, 2026 - Security Hardening, Dual Admin, Enhanced AI Prompt, Animations (Fork Job 3)
+### Dual Admin Access
+- Primary: contact.developersingh@gmail.com / admin123
+- Secondary: infinityanirudra@gmail.com / admin456
+- Both can access /admin panel and all admin API endpoints
+
+### Security Hardening
+- Rate limiting via slowapi: login (5/min), register (5/min), signals (10/min), chat (20/min)
+- Brute-force protection: 5 failed login attempts = 5-minute lockout
+- Security headers: X-Content-Type-Options, X-Frame-Options, X-XSS-Protection, Referrer-Policy, Permissions-Policy
+- Input sanitization: XSS stripping, HTML escaping, length limits
+- Input validation: Email regex, password min 6 chars
+
+### Enhanced AI Signal Prompt (MasterPrompt2.0)
+- Comprehensive technical indicators: SMA/EMA crossovers, RSI(14), MACD(12,26,9), Bollinger Bands(20,2), Ichimoku Cloud, Supertrend, ATR, OBV, Stochastic, CCI
+- Market structure analysis: BOS, CHoCH, Order Blocks, FVG, Premium/Discount zones, Supply/Demand
+- Kill Zone awareness for forex (London/NY sessions)
+- Risk level classification: LOW/MEDIUM/HIGH
+- Technical summary and session notes in signal output
+
+### Professional Animations
+- Page enter transitions (fadeInScale)
+- Stagger animations for card grids (blur + scale + translate)
+- Button effects: btn-glow (hover shadow), btn-ripple (click effect)
+- Card border glow animation on signal generator
+- Smooth sidebar transitions with hover backgrounds
+- 10+ new CSS animation utilities available
+
 ## Mar 25, 2026 - Massive Strategy & Feature Expansion (Fork Job 2)
 ### Expanded Trading Strategies
 - 29 Forex Strategies: ICT, SMC, MSNR, CRT, FVG+OB, BOS, CHoCH, Liquidity Grab, Inducement, Premium/Discount Zones, Kill Zones, SMT Divergence, Breaker Block, Mitigation Block, Supply & Demand, S/R Flip, Trendline Liquidity, EQH/EQL, Asian+London, Session Bias + universal strategies
