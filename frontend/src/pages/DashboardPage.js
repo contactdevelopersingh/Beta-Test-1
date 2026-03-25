@@ -150,7 +150,7 @@ export default function DashboardPage() {
             <span className="text-[10px] font-data text-white/50">{connected ? 'LIVE' : 'OFFLINE'}</span>
             {connected && <span className="text-[10px] font-data text-white/20">#{tick}</span>}
           </div>
-          <Button className="bg-[#6366F1] hover:bg-[#4F46E5] text-white text-xs shadow-[0_0_15px_rgba(99,102,241,0.4)] active:scale-95" onClick={() => navigate('/signals')} data-testid="generate-signal-cta">
+          <Button className="bg-[#6366F1] hover:bg-[#4F46E5] text-white text-xs shadow-[0_0_15px_rgba(99,102,241,0.4)] active:scale-95 btn-glow" onClick={() => navigate('/signals')} data-testid="generate-signal-cta">
             <Zap className="w-3.5 h-3.5 mr-1.5" /> Generate Signal
           </Button>
         </div>
@@ -171,7 +171,7 @@ export default function DashboardPage() {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="glass-panel border-white/10 card-hover" data-testid="portfolio-value-card">
+        <Card className="glass-panel border-white/10 card-hover stagger-item" data-testid="portfolio-value-card">
           <CardContent className="p-4 sm:p-5">
             <p className="text-[10px] text-white/40 uppercase tracking-wider mb-1">Portfolio Value</p>
             <p className="value-lg text-white">{fmtNum(livePortfolioValue)}</p>

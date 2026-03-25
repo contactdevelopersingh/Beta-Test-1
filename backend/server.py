@@ -2,6 +2,9 @@ from fastapi import FastAPI, APIRouter, HTTPException, Depends, Request, Respons
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 import os
 import logging
 import uuid
@@ -12,10 +15,11 @@ import time
 import json
 import random
 import asyncio
+import re
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, validator
 from typing import List, Optional, Dict
 from emergentintegrations.llm.chat import LlmChat, UserMessage
 import smtplib
@@ -232,6 +236,39 @@ async def get_live_market_data(symbols, cache_key, ttl=180):
 app = FastAPI(title="Titan Trade API")
 api_router = APIRouter(prefix="/api")
 
+# Rate Limiter
+limiter = Limiter(key_func=get_remote_address)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# Brute-force protection: track failed logins
+_login_attempts: Dict[str, list] = {}
+MAX_LOGIN_ATTEMPTS = 5
+LOGIN_LOCKOUT_SECONDS = 300
+
+def check_brute_force(email: str):
+    now = time.time()
+    attempts = _login_attempts.get(email, [])
+    attempts = [t for t in attempts if now - t < LOGIN_LOCKOUT_SECONDS]
+    _login_attempts[email] = attempts
+    if len(attempts) >= MAX_LOGIN_ATTEMPTS:
+        raise HTTPException(status_code=429, detail=f"Too many login attempts. Try again in {LOGIN_LOCKOUT_SECONDS // 60} minutes.")
+
+def record_failed_login(email: str):
+    _login_attempts.setdefault(email, []).append(time.time())
+
+def clear_login_attempts(email: str):
+    _login_attempts.pop(email, None)
+
+# Input sanitization
+def sanitize_input(text: str, max_len: int = 5000) -> str:
+    if not text:
+        return text
+    text = text[:max_len]
+    text = re.sub(r'<script[^>]*>.*?</script>', '', text, flags=re.IGNORECASE | re.DOTALL)
+    text = text.replace('<', '&lt;').replace('>', '&gt;')
+    return text.strip()
+
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
@@ -380,7 +417,14 @@ async def get_current_user(request: Request) -> dict:
 # ==================== AUTH ROUTES ====================
 
 @api_router.post("/auth/register")
-async def register(data: UserRegister, response: Response):
+@limiter.limit("5/minute")
+async def register(data: UserRegister, request: Request, response: Response):
+    data.email = sanitize_input(data.email, 200).lower().strip()
+    data.name = sanitize_input(data.name, 100)
+    if not re.match(r'^[^@]+@[^@]+\.[^@]+$', data.email):
+        raise HTTPException(status_code=400, detail="Invalid email format")
+    if len(data.password) < 6:
+        raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
     existing = await db.users.find_one({"email": data.email}, {"_id": 0})
     if existing:
         raise HTTPException(status_code=400, detail="Email already registered")
@@ -401,12 +445,18 @@ async def register(data: UserRegister, response: Response):
     return {"user_id": user_id, "email": data.email, "name": data.name, "token": token}
 
 @api_router.post("/auth/login")
-async def login(data: UserLogin, response: Response):
+@limiter.limit("5/minute")
+async def login(data: UserLogin, request: Request, response: Response):
+    data.email = data.email.lower().strip()
+    check_brute_force(data.email)
     user = await db.users.find_one({"email": data.email}, {"_id": 0})
     if not user or 'password' not in user:
+        record_failed_login(data.email)
         raise HTTPException(status_code=401, detail="Invalid credentials")
     if not bcrypt.checkpw(data.password.encode(), user['password'].encode()):
+        record_failed_login(data.email)
         raise HTTPException(status_code=401, detail="Invalid credentials")
+    clear_login_attempts(data.email)
     token = create_jwt_token(user['user_id'])
     response.set_cookie(key="session_token", value=token, httponly=True, secure=True, samesite="none", max_age=7*24*60*60, path="/")
     return {"user_id": user['user_id'], "email": user['email'], "name": user['name'], "token": token}
@@ -1004,7 +1054,8 @@ async def get_strategies(market: str = "all"):
     return {"strategies": strategies, "market": market}
 
 @api_router.post("/signals/generate")
-async def generate_signal(data: SignalRequest, user: dict = Depends(get_current_user)):
+@limiter.limit("10/minute")
+async def generate_signal(data: SignalRequest, request: Request, user: dict = Depends(get_current_user)):
     if not EMERGENT_LLM_KEY:
         raise HTTPException(status_code=500, detail="AI service not configured")
 
@@ -1079,41 +1130,47 @@ async def generate_signal(data: SignalRequest, user: dict = Depends(get_current_
     direction_bias = random.choice(["bullish", "bearish", "mixed"])
     confidence_range = random.choice(["low (40-55)", "medium (56-72)", "high (73-88)", "very high (89-98)"])
 
-    system_prompt = f"""You are Titan AI, Titan Trade's elite AI trading analyst with 25+ years of institutional experience. Timestamp: {datetime.now(timezone.utc).isoformat()}. Seed: {signal_seed}.
+    system_prompt = f"""You are Titan AI, Titan Trade's elite AI trading analyst with 25+ years of institutional experience across global markets. Timestamp: {datetime.now(timezone.utc).isoformat()}. Seed: {signal_seed}.
 
-=== MULTI-TIMEFRAME ANALYSIS FRAMEWORK ===
-Analyze these timeframes: [{timeframes_str}]
-- Higher timeframes determine TREND DIRECTION (bias)
-- Middle timeframes confirm MOMENTUM and STRUCTURE
-- Lower timeframes pinpoint ENTRY TIMING
-- All timeframes must show confluence for high-confidence signals
+=== COMPREHENSIVE MULTI-TIMEFRAME ANALYSIS ===
+Analyze: [{timeframes_str}]
+- Higher TF (1D/1W): TREND DIRECTION, major S/R zones
+- Middle TF (1H/4H): MOMENTUM, structure, order flow
+- Lower TF (5m/15m): ENTRY TIMING with precision
 
 === STRATEGY: {strategy_desc} ===
 
-=== INSTITUTIONAL TRADING RULES ===
-1. CONFLUENCE IS KING: Minimum 3 confirming factors needed. Score each: indicator alignment, price action pattern, S/R level, volume confirmation, multi-TF agreement
-2. RISK MANAGEMENT (NON-NEGOTIABLE):
-   - Stop Loss MUST be at a logical level (below/above structure, swing low/high, ATR-based)
-   - {rr_instruction}
-   - SL distance determines position sizing (never risk >2% of capital)
-3. ENTRY PRECISION:
-   - BUY: SL below entry, TP1/TP2/TP3 above entry
-   - SELL: SL above entry, TP1/TP2/TP3 below entry
-   - Entry should be at optimal price (pullback to key level, not at extended price)
-4. TAKE PROFIT LEVELS:
-   - TP1: Conservative (previous S/R, 1:1 R:R) — partial exit point
-   - TP2: Standard target (fibonacci extension, measured move)
-   - TP3: Aggressive (major S/R, trend target)
-5. HOLDING DURATION: {profit_target_str}
+=== TECHNICAL INDICATOR ANALYSIS ===
+Analyze these indicators mentally, cite relevant ones:
+TREND: SMA(20,50,200), EMA(9,21,55), VWAP, Ichimoku Cloud, Supertrend, Bollinger Bands(20,2)
+MOMENTUM: RSI(14), MACD(12,26,9), Stochastic(14,3,3), CCI
+VOLUME: Volume vs average, OBV trend, volume spikes at key levels
+VOLATILITY: ATR for SL/TP calibration, BB width for squeeze/expansion
 
-=== DIVERSITY RULES ===
-- Sentiment bias: {direction_bias}
-- Target confidence: {confidence_range}
-- Grade matches confidence: A+ (90-100), A (80-89), B+ (70-79), B (60-69), C (40-59)
-- NEVER default to generic 78%/B+ — each signal is UNIQUE
+=== MARKET STRUCTURE ===
+- HH/HL (uptrend) or LH/LL (downtrend)
+- Order Blocks, Fair Value Gaps, Liquidity pools
+- Premium (above 50% FIB) vs Discount (below 50% FIB) zone
+- BOS/CHoCH signals, untested supply/demand zones
 
-Respond ONLY in valid JSON (no markdown, no code blocks):
-{{"direction":"BUY or SELL","confidence":40-98,"grade":"A+/A/B+/B/C","entry_price":number,"take_profit_1":number,"take_profit_2":number,"take_profit_3":number,"stop_loss":number,"risk_reward":"1:X.X","timeframes_analyzed":["{timeframes_str.replace(', ','","')}"],"primary_timeframe":"main timeframe","strategy_used":"{strategy}","holding_duration":"e.g. 2-4 hours / 1-3 days / 1-2 weeks","confluence_score":3-6,"confluence_factors":["factor1","factor2","factor3"],"analysis":"3-4 sentence UNIQUE analysis with specific technical reasoning across timeframes","trade_logic":"2-3 sentence WHY this setup exists (structure, pattern, institutional footprint)","trade_reason":"Specific indicators/patterns that triggered: RSI divergence on 4H + order block on 1H + EMA crossover on 15m","key_levels":["price 1","price 2","price 3"],"market_condition":"Trending/Ranging/Breakout/Reversal","higher_tf_bias":"Bullish/Bearish/Neutral with reason","invalidation":"What price level or event would invalidate this trade"}}"""
+=== RISK MANAGEMENT ===
+1. CONFLUENCE: Min 3 confirming factors
+2. {rr_instruction}
+3. SL at structural level (swing high/low, OB edge, ATR-based)
+4. BUY: Entry at discount/demand, SL below structure
+   SELL: Entry at premium/supply, SL above structure
+5. TP1: Nearest S/R, 1:1 R:R (40% exit) | TP2: Fib ext 1.272 (30%) | TP3: Major S/R, Fib 1.618 (30%)
+6. HOLDING: {profit_target_str}
+7. KILL ZONES: London (2-5AM EST), New York (7-10AM EST)
+
+=== DIVERSITY ===
+- Bias: {direction_bias} | Confidence: {confidence_range}
+- Grade: A+(90-100), A(80-89), B+(70-79), B(60-69), C(40-59)
+- Risk: LOW (R:R>=1:2.5), MEDIUM (1:1.5-2.5), HIGH (<1:1.5)
+- NEVER default to generic values
+
+JSON ONLY (no markdown):
+{{"direction":"BUY/SELL","confidence":40-98,"grade":"A+/A/B+/B/C","entry_price":number,"take_profit_1":number,"take_profit_2":number,"take_profit_3":number,"stop_loss":number,"risk_reward":"1:X.X","risk_level":"LOW/MEDIUM/HIGH","timeframes_analyzed":["{timeframes_str.replace(', ','","')}"],"primary_timeframe":"TF","strategy_used":"{strategy}","holding_duration":"duration","confluence_score":3-6,"confluence_factors":["f1","f2","f3"],"technical_summary":"RSI=XX, MACD=state, EMA alignment, volume","analysis":"3-4 sentences unique analysis","trade_logic":"2-3 sentences WHY this setup","trade_reason":"Specific triggers","key_levels":["p1","p2","p3"],"market_condition":"Trending/Ranging/Breakout/Reversal","higher_tf_bias":"Bullish/Bearish/Neutral + reason","invalidation":"Invalidation level","session_note":"Best session: London/NY/Asian/N-A"}}"""
 
     chat = LlmChat(
         api_key=EMERGENT_LLM_KEY,
@@ -1231,7 +1288,8 @@ async def remove_from_watchlist(watchlist_id: str, user: dict = Depends(get_curr
 # ==================== BEAST AI CHAT ====================
 
 @api_router.post("/chat")
-async def beast_chat(data: ChatMessage, user: dict = Depends(get_current_user)):
+@limiter.limit("20/minute")
+async def beast_chat(data: ChatMessage, request: Request, user: dict = Depends(get_current_user)):
     if not EMERGENT_LLM_KEY:
         raise HTTPException(status_code=500, detail="AI service not configured")
 
@@ -1521,12 +1579,12 @@ async def delete_journal_entry(trade_id: str, user: dict = Depends(get_current_u
 
 # ==================== ADMIN PANEL ====================
 
-ADMIN_EMAIL = "contact.developersingh@gmail.com"
+ADMIN_EMAILS = ["contact.developersingh@gmail.com", "infinityanirudra@gmail.com"]
 
 async def get_admin_user(request: Request) -> dict:
-    """Verify the current user is the admin"""
+    """Verify the current user is an admin"""
     user = await get_current_user(request)
-    if user.get('email') != ADMIN_EMAIL:
+    if user.get('email') not in ADMIN_EMAILS:
         raise HTTPException(status_code=403, detail="Admin access required")
     return user
 
@@ -2313,6 +2371,21 @@ async def execute_signal_as_trade(signal_id: str, units: int = 1000, user: dict 
 
 app.include_router(api_router)
 
+# Security headers middleware
+from starlette.middleware.base import BaseHTTPMiddleware
+
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        response = await call_next(request)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["X-XSS-Protection"] = "1; mode=block"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+        return response
+
+app.add_middleware(SecurityHeadersMiddleware)
+
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
@@ -2324,6 +2397,24 @@ app.add_middleware(
 @app.on_event("startup")
 async def startup_event():
     asyncio.create_task(price_ticker_loop())
+    # Ensure second admin user exists with password
+    admin2 = await db.users.find_one({"email": "infinityanirudra@gmail.com"}, {"_id": 0})
+    if not admin2:
+        hashed = bcrypt.hashpw("admin456".encode(), bcrypt.gensalt()).decode()
+        await db.users.insert_one({
+            "user_id": f"user_{uuid.uuid4().hex[:12]}",
+            "email": "infinityanirudra@gmail.com",
+            "name": "Anirudra Admin",
+            "password": hashed,
+            "picture": None,
+            "auth_type": "jwt",
+            "created_at": datetime.now(timezone.utc).isoformat()
+        })
+        logger.info("Second admin user created: infinityanirudra@gmail.com")
+    elif 'password' not in admin2 or not admin2.get('password'):
+        hashed = bcrypt.hashpw("admin456".encode(), bcrypt.gensalt()).decode()
+        await db.users.update_one({"email": "infinityanirudra@gmail.com"}, {"$set": {"password": hashed}})
+        logger.info("Second admin password set")
 
 @app.on_event("shutdown")
 async def shutdown_db_client():

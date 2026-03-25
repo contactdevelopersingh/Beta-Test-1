@@ -56,7 +56,7 @@ export default function LeaderboardPage() {
   }
 
   return (
-    <div className="space-y-6" data-testid="leaderboard-page">
+    <div className="space-y-6 page-enter" data-testid="leaderboard-page">
       <div>
         <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">Leaderboard</h1>
         <p className="text-sm text-white/50 mt-1">Top traders ranked by P&L performance</p>

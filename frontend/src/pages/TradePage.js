@@ -116,7 +116,7 @@ export default function TradePage() {
   };
 
   return (
-    <div className="space-y-6" data-testid="trade-page">
+    <div className="space-y-6 page-enter" data-testid="trade-page">
       <div>
         <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">Trade Execution</h1>
         <p className="text-sm text-white/50 mt-1">Execute trades directly via OANDA</p>

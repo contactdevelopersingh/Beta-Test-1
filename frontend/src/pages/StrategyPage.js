@@ -82,7 +82,7 @@ export default function StrategyBuilderPage() {
   }
 
   return (
-    <div className="space-y-6" data-testid="strategy-builder-page">
+    <div className="space-y-6 page-enter" data-testid="strategy-builder-page">
       <div>
         <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">Strategy Builder</h1>
         <p className="text-sm text-white/50 mt-1">Create custom combo strategies by combining multiple techniques</p>

@@ -214,7 +214,7 @@ export default function SignalsPage() {
   const sellCount = signals.filter(s => s.direction === 'SELL').length;
 
   return (
-    <div className="space-y-6" data-testid="signals-page">
+    <div className="space-y-6 page-enter" data-testid="signals-page">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div>
           <h1 className="text-2xl font-bold text-white" style={{ fontFamily: 'Manrope' }}>AI Trading Signals</h1>
@@ -231,7 +231,7 @@ export default function SignalsPage() {
       </div>
 
       {/* Generate Signal Card */}
-      <Card className="glass-panel border-white/10 border-l-2 border-l-[#6366F1]" data-testid="signal-generator-card">
+      <Card className="glass-panel border-white/10 border-l-2 border-l-[#6366F1] animate-border-glow" data-testid="signal-generator-card">
         <CardHeader className="pb-3">
           <CardTitle className="text-sm text-white/80 flex items-center gap-2">
             <Zap className="w-4 h-4 text-[#6366F1]" /> Generate New Signal
@@ -375,7 +375,7 @@ export default function SignalsPage() {
 
           {/* Generate Button */}
           <Button
-            className="bg-[#6366F1] hover:bg-[#4F46E5] text-white text-xs shadow-[0_0_15px_rgba(99,102,241,0.4)] active:scale-95 uppercase tracking-wide font-semibold px-8 py-2.5"
+            className="bg-[#6366F1] hover:bg-[#4F46E5] text-white text-xs shadow-[0_0_15px_rgba(99,102,241,0.4)] active:scale-95 uppercase tracking-wide font-semibold px-8 py-2.5 btn-glow btn-ripple"
             onClick={generateSignal} disabled={generating}
             data-testid="generate-signal-btn"
           >

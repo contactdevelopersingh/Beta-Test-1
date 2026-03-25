@@ -53,8 +53,8 @@ const SidebarContent = ({ onClose }) => {
             to={to}
             onClick={onClose}
             className={({ isActive }) =>
-              `sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium ${
-                isActive ? 'active bg-[#6366F1]/10 text-[#6366F1]' : 'text-white/60 hover:text-white'
+              `sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${
+                isActive ? 'active bg-[#6366F1]/10 text-[#6366F1]' : 'text-white/60 hover:text-white hover:bg-white/[0.03]'
               }`
             }
             data-testid={`nav-${label.toLowerCase().replace(' ', '-')}`}
