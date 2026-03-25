@@ -267,9 +267,11 @@ class SignalRequest(BaseModel):
     asset_name: str
     asset_type: str
     timeframe: str = "1D"
-    timeframes: Optional[List[str]] = None  # Multi-timeframe: ["5m","15m","1H","4H","1D"]
-    strategy: str = "auto"  # Trading strategy: auto, ema_crossover, rsi_divergence, smc, vwap, macd, bollinger, ichimoku, fibonacci, price_action
-    profit_target: Optional[float] = None  # User's desired profit % for duration calc
+    timeframes: Optional[List[str]] = None
+    strategy: str = "auto"
+    strategies: Optional[List[str]] = None  # Combo: ["smc","ict","crt"]
+    profit_target: Optional[float] = None
+    risk_reward: Optional[str] = None  # Manual R:R like "1:2.5"
 
 class AlertCreate(BaseModel):
     asset_id: str
@@ -925,27 +927,81 @@ async def get_signals(user: dict = Depends(get_current_user)):
     return {"signals": signals}
 
 STRATEGY_DESCRIPTIONS = {
+    # === UNIVERSAL STRATEGIES ===
     "auto": "Automatic: Use the best combination of indicators for this asset and timeframe.",
-    "ema_crossover": "EMA Crossover: 9/21 EMA for short-term, 50/200 EMA for trend. Golden Cross = bullish, Death Cross = bearish. Entry on pullback to fast EMA after crossover.",
-    "rsi_divergence": "RSI Divergence: RSI(14) overbought >70, oversold <30. Bullish divergence = price makes lower low but RSI makes higher low. Bearish divergence = price makes higher high but RSI makes lower high.",
-    "smc": "Smart Money Concepts: Identify Order Blocks (last opposing candle before impulse), Fair Value Gaps (3-candle imbalance), Break of Structure (BOS), Change of Character (CHoCH). Entry at OB/FVG after BOS confirmation.",
-    "vwap": "VWAP Strategy: Price above VWAP = bullish bias, below = bearish. Look for VWAP bounces with volume confirmation. Best for intraday. Combine with standard deviations for targets.",
-    "macd": "MACD Strategy: MACD(12,26,9). Signal line crossovers for entry. Histogram divergence for early reversal detection. Zero line crossover for trend confirmation.",
-    "bollinger": "Bollinger Bands(20,2): Mean reversion when price touches outer band with RSI confirmation. Squeeze (narrow bands) signals upcoming volatility breakout. Walk the band in strong trends.",
-    "ichimoku": "Ichimoku Cloud: TK Cross for entry, Kumo (cloud) for support/resistance, Chikou Span for confirmation. Price above cloud = bullish. All 5 elements must align for A+ signal.",
-    "fibonacci": "Fibonacci Retracement: Key levels 23.6%, 38.2%, 50%, 61.8%, 78.6%. Enter at golden pocket (61.8-78.6%) in trending markets. Extensions 127.2%, 161.8% for targets.",
-    "price_action": "Pure Price Action: Candlestick patterns (engulfing, pin bars, inside bars), support/resistance zones, trendlines, supply/demand zones. No indicators needed."
+    "ema_crossover": "EMA Crossover: 9/21 EMA for short-term, 50/200 EMA for trend. Golden Cross = bullish, Death Cross = bearish.",
+    "macd": "MACD Strategy: MACD(12,26,9). Signal line crossovers for entry. Histogram divergence for early reversal.",
+    "bollinger": "Bollinger Bands(20,2): Mean reversion at outer bands. Squeeze signals breakout. Walk the band in trends.",
+    "ichimoku": "Ichimoku Cloud: TK Cross for entry, Kumo for S/R, Chikou for confirmation. All 5 elements must align.",
+    "fibonacci": "Fibonacci Retracement: Key levels 23.6%, 38.2%, 50%, 61.8%, 78.6%. Golden pocket entry in trends.",
+    "price_action": "Pure Price Action: Candlestick patterns, S/R zones, trendlines, supply/demand zones. No indicators.",
+
+    # === FOREX-SPECIFIC STRATEGIES ===
+    "ict": "ICT (Inner Circle Trader): Institutional order flow, optimal trade entry (OTE), judas swing, market maker model. Focus on time-based liquidity and institutional price delivery.",
+    "smc": "Smart Money Concepts: Order Blocks, Fair Value Gaps, BOS, CHoCH. Entry at OB/FVG after BOS confirmation.",
+    "msnr": "MSNR (Market Structure + Nested Ranges): Identify swing structure highs/lows, nested consolidation ranges within larger structure. Trade breakouts of nested ranges aligned with HTF trend.",
+    "crt": "CRT (Candle Range Theory): Analyze candle body-to-wick ratios and range expansion/contraction. High-wick candles = rejection. Range expansion after contraction = momentum entry.",
+    "fvg_ob": "FVG + Order Block: Combine Fair Value Gaps (3-candle imbalance) with Order Blocks (last opposing candle before impulse). Entry when price returns to fill FVG at OB level.",
+    "bos": "Break of Structure: Identify BOS (break above/below swing point). Confirms trend continuation. Entry on pullback after BOS with lower-TF confirmation.",
+    "choch": "Change of Character: CHoCH signals trend reversal. Higher low breaks in downtrend or lower high breaks in uptrend. First sign of smart money repositioning.",
+    "liquidity_grab": "Liquidity Grab / Stop Hunt: Identify equal highs/lows where stops accumulate. Wait for price to sweep these levels then reverse. Entry after liquidity is taken with displacement candle.",
+    "inducement": "Inducement: False breakout that traps retail traders. Price creates minor structure break to lure entries, then reverses. Wait for inducement completion before entering opposite direction.",
+    "premium_discount": "Premium & Discount Zones: Use Fibonacci 50% as equilibrium. Above 50% = premium (sell zone), below 50% = discount (buy zone). Only buy in discount, sell in premium.",
+    "kill_zones": "Kill Zones: London (2-5 AM EST), New York (7-10 AM EST). Highest volume and institutional activity. Focus entries during these sessions for best fills and momentum.",
+    "smt_divergence": "SMT Divergence: Smart Money Technique - compare correlated pairs (DXY vs EUR/USD). When they diverge, smart money is positioning. Trade the pair that leads the divergence.",
+    "breaker_block": "Breaker Block: Failed order block that gets broken. Previous support becomes resistance (and vice versa). Strong confirmation of trend reversal. Enter at retest of breaker.",
+    "mitigation_block": "Mitigation Block: Area where institutions mitigate losing positions. Price returns to fill institutional orders at a loss. Enter when price taps mitigation zone with displacement.",
+    "supply_demand": "Supply & Demand Zones: Identify fresh zones where aggressive price movement originated. Enter when price returns to unfilled supply/demand zone for first time.",
+    "sr_flip": "Support & Resistance Flip: When broken support becomes resistance (and vice versa). Wait for clean break, then entry on retest of flipped level with confirmation.",
+    "trendline_liquidity": "Trendline Liquidity: Trendlines create predictable stop placement. Wait for trendline break (liquidity sweep), then enter in original trend direction after false break.",
+    "eqh_eql": "Equal Highs / Equal Lows: EQH/EQL are magnets for price (liquidity pools). Price will seek these levels to grab stops. Trade the reversal after EQH/EQL are swept.",
+    "asian_london": "Asian Range + London Breakout: Mark Asian session range (8 PM - midnight EST). London session breaks this range. Enter in direction of London breakout with Asian range as initial target.",
+    "session_bias": "Session Bias Trading: Determine daily bias from HTF analysis. Trade only in bias direction during high-volume sessions. London sets direction, New York follows through.",
+    "rsi_divergence": "RSI Divergence: RSI(14) overbought >70, oversold <30. Bullish divergence = price lower low, RSI higher low. Bearish divergence = price higher high, RSI lower high.",
+    "vwap": "VWAP Strategy: Price above VWAP = bullish bias, below = bearish. VWAP bounces with volume confirmation. Best for intraday.",
+
+    # === CRYPTO-SPECIFIC STRATEGIES ===
+    "onchain": "On-Chain Analysis: Analyze wallet movements, exchange inflows/outflows, active addresses, NVT ratio. Large exchange outflows = accumulation (bullish). Inflows = distribution (bearish).",
+    "whale_tracking": "Whale Activity Tracking: Monitor large wallet transactions (>100 BTC, >1000 ETH). Whale accumulation = bullish. Whale transfers to exchanges = bearish. Follow institutional money.",
+    "orderbook": "Order Book Analysis: Analyze bid/ask depth, order book imbalances, spoofing detection. Large bid walls = support, ask walls = resistance. Thin order books = volatility ahead.",
+    "liquidity_heatmap": "Liquidity Heatmaps: Visualize where liquidation clusters exist. Price gravitates toward highest liquidity. Enter trades targeting these liquidation zones as take-profit levels.",
+    "funding_rate": "Funding Rate Analysis: Positive funding = longs pay shorts (bearish when extreme). Negative funding = shorts pay longs (bullish when extreme). Trade against extreme funding.",
+    "open_interest": "Open Interest Strategy: Rising OI + rising price = strong trend. Rising OI + falling price = bearish. Falling OI = positions closing. OI divergence signals reversal.",
+    "long_short_ratio": "Long/Short Ratio: Extreme long bias (>70% long) = potential short squeeze or dump. Extreme short bias = potential squeeze up. Trade against the crowd at extremes.",
+    "liquidation_zones": "Liquidation Zones: Map leverage liquidation levels. Price often sweeps these zones before reversing. Enter after liquidation cascade for mean reversion trade.",
+    "perp_imbalance": "Perpetual Futures Imbalance: Spot vs perp price divergence. Perp premium = overleveraged longs. Perp discount = overleveraged shorts. Trade convergence back to spot.",
+    "market_maker": "Market Maker Manipulation: Identify wash trading, spoofing, stop hunts by market makers. Wait for manipulation to complete, then enter in true direction with displacement.",
+    "breakout_fakeout": "Breakout + Fakeout Strategy: Identify consolidation ranges. Wait for initial breakout (potential fakeout). Enter on confirmed breakout with volume or after fakeout reversal.",
+    "range_scalping": "Range Scalping: Identify tight ranges on lower timeframes. Buy at range support, sell at resistance. Use tight stops outside range. Best in low-volatility periods.",
+    "trend_following": "Trend Following (EMA + VWAP): Combine EMA(20/50) direction with VWAP bias. Enter on pullbacks to EMA in VWAP direction. Strong for trending crypto markets.",
+    "volume_profile": "Volume Profile (POC, VAH, VAL): Point of Control = highest volume node. Value Area High/Low = 70% of volume. Trade rejections at VAH/VAL, mean reversion to POC.",
+    "vwap_bounce": "VWAP Bounce Strategy: Crypto-specific VWAP bounces during trending days. Enter at VWAP touch with volume spike. Target previous high/low. Tight stop below VWAP.",
+    "momentum_scalp": "Momentum Scalping: Enter on sudden volume spikes and momentum bursts. Use 1-3 minute charts. Quick entries/exits. RSI + Volume confirmation. Best during high volatility.",
+    "news_volatility": "News-Based Volatility Trading: Trade around major crypto events (FOMC, CPI, halvings, ETF decisions). Enter after initial spike settles. Fade extreme moves or ride momentum.",
+    "altcoin_rotation": "Altcoin Rotation Strategy: Track BTC dominance and ETH/BTC ratio. When BTC dominance falls, rotate to altcoins. When dominance rises, rotate back to BTC.",
+    "btc_dominance": "BTC Dominance Strategy: BTC.D rising = alts underperform, focus BTC longs. BTC.D falling = alt season, focus alt longs. BTC.D at extremes = rotation signal.",
 }
 
+# Market-specific strategy grouping
+FOREX_STRATEGIES = ["auto", "ict", "smc", "msnr", "crt", "fvg_ob", "bos", "choch", "liquidity_grab", "inducement", "premium_discount", "kill_zones", "smt_divergence", "breaker_block", "mitigation_block", "supply_demand", "sr_flip", "trendline_liquidity", "eqh_eql", "asian_london", "session_bias", "ema_crossover", "rsi_divergence", "macd", "bollinger", "ichimoku", "fibonacci", "price_action", "vwap"]
+CRYPTO_STRATEGIES = ["auto", "onchain", "whale_tracking", "orderbook", "liquidity_heatmap", "funding_rate", "open_interest", "long_short_ratio", "liquidation_zones", "perp_imbalance", "market_maker", "breakout_fakeout", "range_scalping", "trend_following", "volume_profile", "vwap_bounce", "rsi_divergence", "momentum_scalp", "news_volatility", "altcoin_rotation", "btc_dominance", "ema_crossover", "macd", "bollinger", "ichimoku", "fibonacci", "price_action", "smc", "vwap"]
+INDIAN_STRATEGIES = ["auto", "ema_crossover", "rsi_divergence", "smc", "vwap", "macd", "bollinger", "ichimoku", "fibonacci", "price_action", "supply_demand", "sr_flip", "breakout_fakeout", "volume_profile", "trend_following"]
+
+ALL_TIMEFRAMES = ["1m", "3m", "5m", "10m", "15m", "30m", "1H", "2H", "3H", "4H", "1D", "3D", "1W"]
+
 @api_router.get("/signals/strategies")
-async def get_strategies():
-    """Return available trading strategies"""
+async def get_strategies(market: str = "all"):
+    """Return available trading strategies, optionally filtered by market type"""
+    strategy_list = FOREX_STRATEGIES if market == "forex" else CRYPTO_STRATEGIES if market == "crypto" else INDIAN_STRATEGIES if market == "indian" else list(STRATEGY_DESCRIPTIONS.keys())
     strategies = []
-    for key, desc in STRATEGY_DESCRIPTIONS.items():
+    for key in strategy_list:
+        desc = STRATEGY_DESCRIPTIONS.get(key, "")
+        if not desc:
+            continue
         name = desc.split(":")[0].strip()
         detail = desc.split(":", 1)[1].strip() if ":" in desc else desc
         strategies.append({"id": key, "name": name, "description": detail})
-    return {"strategies": strategies}
+    return {"strategies": strategies, "market": market}
 
 @api_router.post("/signals/generate")
 async def generate_signal(data: SignalRequest, user: dict = Depends(get_current_user)):
@@ -958,10 +1014,20 @@ async def generate_signal(data: SignalRequest, user: dict = Depends(get_current_
         today_count = await count_today_usage(user['user_id'], 'signals')
         if today_count >= limits['signals_per_day']:
             raise HTTPException(status_code=429, detail=f"Daily signal limit reached ({limits['signals_per_day']}/{limits['plan_name']} plan). Upgrade for more signals.")
-    if not limits['multi_timeframe'] and data.timeframes and len(data.timeframes) > 1:
+    # Free users: max 2 timeframes
+    if limits['plan_name'] == 'free' and data.timeframes and len(data.timeframes) > 2:
+        raise HTTPException(status_code=403, detail="Free plan allows max 2 timeframes. Upgrade for more.")
+    if not limits['multi_timeframe'] and data.timeframes and len(data.timeframes) > 2:
         raise HTTPException(status_code=403, detail=f"Multi-timeframe analysis requires Pro plan or above. Current plan: {limits['plan_name']}")
-    if limits['strategies'] != "all" and data.strategy not in limits['strategies']:
-        raise HTTPException(status_code=403, detail=f"Strategy '{data.strategy}' requires a higher plan. Available: {', '.join(limits['strategies'])}")
+    # Strategy gating for basic plan
+    active_strategy = data.strategy or "auto"
+    if data.strategies and len(data.strategies) > 0:
+        active_strategy = "+".join(data.strategies)
+    if limits['strategies'] != "all":
+        strats_to_check = data.strategies if data.strategies else [data.strategy]
+        for s in strats_to_check:
+            if s not in limits['strategies']:
+                raise HTTPException(status_code=403, detail=f"Strategy '{s}' requires a higher plan. Available: {', '.join(limits['strategies'])}")
 
     # Build market context from live data
     market_context = ""
@@ -995,8 +1061,19 @@ async def generate_signal(data: SignalRequest, user: dict = Depends(get_current_
     timeframes_str = ", ".join(timeframes)
 
     strategy = data.strategy or "auto"
-    strategy_desc = STRATEGY_DESCRIPTIONS.get(strategy, STRATEGY_DESCRIPTIONS["auto"])
+    # Build combo strategy description
+    if data.strategies and len(data.strategies) > 0:
+        combo_descs = []
+        for s in data.strategies:
+            d = STRATEGY_DESCRIPTIONS.get(s, "")
+            if d:
+                combo_descs.append(d)
+        strategy_desc = " COMBINED WITH ".join(combo_descs) if combo_descs else STRATEGY_DESCRIPTIONS.get(strategy, STRATEGY_DESCRIPTIONS["auto"])
+        strategy = " + ".join(data.strategies)
+    else:
+        strategy_desc = STRATEGY_DESCRIPTIONS.get(strategy, STRATEGY_DESCRIPTIONS["auto"])
     profit_target_str = f"User's profit target: {data.profit_target}%. Calculate holding duration to achieve this." if data.profit_target else "Estimate a realistic holding duration based on timeframes and market volatility."
+    rr_instruction = f"User has specified a manual Risk:Reward ratio of {data.risk_reward}. STRICTLY use this R:R for calculating SL and TP levels." if data.risk_reward else "Risk:Reward minimum 1:1.5, target 1:2 to 1:3"
 
     signal_seed = random.randint(1000, 9999)
     direction_bias = random.choice(["bullish", "bearish", "mixed"])
@@ -1017,7 +1094,7 @@ Analyze these timeframes: [{timeframes_str}]
 1. CONFLUENCE IS KING: Minimum 3 confirming factors needed. Score each: indicator alignment, price action pattern, S/R level, volume confirmation, multi-TF agreement
 2. RISK MANAGEMENT (NON-NEGOTIABLE):
    - Stop Loss MUST be at a logical level (below/above structure, swing low/high, ATR-based)
-   - Risk:Reward minimum 1:1.5, target 1:2 to 1:3
+   - {rr_instruction}
    - SL distance determines position sizing (never risk >2% of capital)
 3. ENTRY PRECISION:
    - BUY: SL below entry, TP1/TP2/TP3 above entry
@@ -1764,7 +1841,8 @@ async def get_plan_usage(user: dict = Depends(get_current_user)):
 
 class OrderRequest(BaseModel):
     instrument: str  # e.g. EUR_USD
-    units: int  # positive=buy, negative=sell
+    units: Optional[int] = None  # positive=buy, negative=sell
+    usd_amount: Optional[float] = None  # Trade by USD value instead of units
     order_type: str = "MARKET"  # MARKET, LIMIT, STOP
     price: Optional[float] = None  # for LIMIT/STOP orders
     stop_loss: Optional[float] = None
@@ -1772,18 +1850,34 @@ class OrderRequest(BaseModel):
 
 @api_router.post("/trade/order")
 async def place_order(data: OrderRequest, user: dict = Depends(get_current_user)):
-    """Place a trade order via OANDA"""
+    """Place a trade order via OANDA. Supports units or USD amount."""
     limits = await get_user_limits(user['user_id'])
     if not limits.get('trade_execution', False):
         raise HTTPException(status_code=403, detail=f"Trade execution requires Titan plan. Current: {limits['plan_name']}")
     if not OANDA_API_KEY or not OANDA_ACCOUNT_ID:
         raise HTTPException(status_code=500, detail="OANDA trading not configured")
 
+    # Calculate units from USD amount if provided
+    trade_units = data.units
+    if data.usd_amount and not data.units:
+        # Get current price to convert USD to units
+        inst_id = data.instrument.lower().replace('_', '')
+        live_item = next((f for f in _live['forex'] if f['id'] == inst_id), None)
+        if live_item and live_item.get('price', 0) > 0:
+            trade_units = int(data.usd_amount / live_item['price']) if live_item['price'] < 10 else int(data.usd_amount)
+        else:
+            trade_units = int(data.usd_amount)
+        if data.usd_amount < 0:
+            trade_units = -abs(trade_units)
+
+    if not trade_units:
+        raise HTTPException(status_code=400, detail="Provide either 'units' or 'usd_amount'")
+
     order_body = {
         "order": {
             "type": data.order_type,
             "instrument": data.instrument,
-            "units": str(data.units),
+            "units": str(trade_units),
             "timeInForce": "FOK" if data.order_type == "MARKET" else "GTC",
             "positionFill": "DEFAULT",
         }
@@ -2061,6 +2155,159 @@ async def sitemap():
         xml += f'  <url><loc>{base}{page}</loc><changefreq>daily</changefreq><priority>{"1.0" if page == "/" else "0.8"}</priority></url>\n'
     xml += '</urlset>'
     return StarletteResponse(content=xml, media_type="application/xml")
+
+# ==================== 2FA (TOTP) ====================
+
+import pyotp
+import qrcode
+import io
+import base64
+
+class TwoFASetup(BaseModel):
+    code: str
+
+@api_router.post("/auth/2fa/setup")
+async def setup_2fa(user: dict = Depends(get_current_user)):
+    """Generate a new TOTP secret and QR code for 2FA setup"""
+    secret = pyotp.random_base32()
+    totp = pyotp.TOTP(secret)
+    uri = totp.provisioning_uri(name=user['email'], issuer_name="Titan Trade")
+    # Generate QR code as base64
+    img = qrcode.make(uri)
+    buf = io.BytesIO()
+    img.save(buf, format='PNG')
+    qr_b64 = base64.b64encode(buf.getvalue()).decode()
+    # Store secret temporarily (not yet verified)
+    await db.users.update_one({"user_id": user['user_id']}, {"$set": {"totp_secret_pending": secret}})
+    return {"secret": secret, "qr_code": f"data:image/png;base64,{qr_b64}", "uri": uri}
+
+@api_router.post("/auth/2fa/verify")
+async def verify_2fa(data: TwoFASetup, user: dict = Depends(get_current_user)):
+    """Verify TOTP code and enable 2FA"""
+    u = await db.users.find_one({"user_id": user['user_id']}, {"_id": 0})
+    secret = u.get('totp_secret_pending') or u.get('totp_secret')
+    if not secret:
+        raise HTTPException(status_code=400, detail="No 2FA setup in progress. Call /auth/2fa/setup first.")
+    totp = pyotp.TOTP(secret)
+    if not totp.verify(data.code, valid_window=1):
+        raise HTTPException(status_code=400, detail="Invalid code. Try again.")
+    await db.users.update_one({"user_id": user['user_id']}, {"$set": {"totp_secret": secret, "two_fa_enabled": True}, "$unset": {"totp_secret_pending": ""}})
+    return {"message": "2FA enabled successfully", "two_fa_enabled": True}
+
+@api_router.post("/auth/2fa/disable")
+async def disable_2fa(data: TwoFASetup, user: dict = Depends(get_current_user)):
+    """Disable 2FA after verifying current code"""
+    u = await db.users.find_one({"user_id": user['user_id']}, {"_id": 0})
+    secret = u.get('totp_secret')
+    if not secret:
+        raise HTTPException(status_code=400, detail="2FA is not enabled.")
+    totp = pyotp.TOTP(secret)
+    if not totp.verify(data.code, valid_window=1):
+        raise HTTPException(status_code=400, detail="Invalid code.")
+    await db.users.update_one({"user_id": user['user_id']}, {"$set": {"two_fa_enabled": False}, "$unset": {"totp_secret": "", "totp_secret_pending": ""}})
+    return {"message": "2FA disabled", "two_fa_enabled": False}
+
+@api_router.get("/auth/2fa/status")
+async def get_2fa_status(user: dict = Depends(get_current_user)):
+    u = await db.users.find_one({"user_id": user['user_id']}, {"_id": 0})
+    return {"two_fa_enabled": u.get('two_fa_enabled', False)}
+
+# ==================== CUSTOM STRATEGIES ====================
+
+class CustomStrategy(BaseModel):
+    name: str
+    description: str
+    strategies: List[str]  # combo strategy IDs like ["smc", "ict", "crt"]
+    market_type: str = "all"  # forex, crypto, indian, all
+
+@api_router.get("/strategies/custom")
+async def get_custom_strategies(user: dict = Depends(get_current_user)):
+    strategies = await db.custom_strategies.find({"user_id": user['user_id']}, {"_id": 0}).to_list(50)
+    return {"strategies": strategies}
+
+@api_router.post("/strategies/custom")
+async def create_custom_strategy(data: CustomStrategy, user: dict = Depends(get_current_user)):
+    doc = {
+        "strategy_id": f"cs_{uuid.uuid4().hex[:12]}",
+        "user_id": user['user_id'],
+        "name": data.name,
+        "description": data.description,
+        "strategies": data.strategies,
+        "market_type": data.market_type,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.custom_strategies.insert_one(doc)
+    doc.pop('_id', None)
+    return doc
+
+@api_router.delete("/strategies/custom/{strategy_id}")
+async def delete_custom_strategy(strategy_id: str, user: dict = Depends(get_current_user)):
+    result = await db.custom_strategies.delete_one({"strategy_id": strategy_id, "user_id": user['user_id']})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Strategy not found")
+    return {"message": "Custom strategy deleted"}
+
+# ==================== SIGNAL TO TRADE PUSH ====================
+
+@api_router.post("/signals/{signal_id}/execute")
+async def execute_signal_as_trade(signal_id: str, units: int = 1000, user: dict = Depends(get_current_user)):
+    """Push a signal directly to trade execution"""
+    limits = await get_user_limits(user['user_id'])
+    if not limits.get('trade_execution', False):
+        raise HTTPException(status_code=403, detail="Trade execution requires Titan plan")
+    signal = await db.signals.find_one({"signal_id": signal_id, "user_id": user['user_id']}, {"_id": 0})
+    if not signal:
+        raise HTTPException(status_code=404, detail="Signal not found")
+    # Map asset to OANDA instrument
+    asset_id = signal.get('asset_id', '')
+    instrument = OANDA_ID_TO_PAIR.get(asset_id)
+    if not instrument:
+        raise HTTPException(status_code=400, detail=f"Asset '{asset_id}' is not tradeable via OANDA (only forex pairs)")
+    direction = signal.get('direction', 'BUY')
+    actual_units = abs(units) if direction == 'BUY' else -abs(units)
+    order_body = {
+        "order": {
+            "type": "MARKET",
+            "instrument": instrument,
+            "units": str(actual_units),
+            "timeInForce": "FOK",
+            "positionFill": "DEFAULT",
+        }
+    }
+    if signal.get('stop_loss'):
+        order_body["order"]["stopLossOnFill"] = {"price": str(signal['stop_loss'])}
+    if signal.get('take_profit_1'):
+        order_body["order"]["takeProfitOnFill"] = {"price": str(signal['take_profit_1'])}
+    try:
+        async with httpx.AsyncClient(timeout=15) as client:
+            resp = await client.post(
+                f"{OANDA_BASE_URL}/accounts/{OANDA_ACCOUNT_ID}/orders",
+                headers={"Authorization": f"Bearer {OANDA_API_KEY}", "Content-Type": "application/json"},
+                json=order_body
+            )
+            result = resp.json()
+        if resp.status_code not in [200, 201]:
+            raise HTTPException(status_code=400, detail=f"Order rejected: {result.get('errorMessage', str(result))}")
+        trade_doc = {
+            "trade_id": f"exec_{uuid.uuid4().hex[:12]}",
+            "user_id": user['user_id'],
+            "instrument": instrument,
+            "units": actual_units,
+            "order_type": "MARKET",
+            "stop_loss": signal.get('stop_loss'),
+            "take_profit": signal.get('take_profit_1'),
+            "from_signal": signal_id,
+            "oanda_response": {k: v for k, v in result.items() if k != '_id'},
+            "status": "filled",
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+        await db.trade_executions.insert_one(trade_doc)
+        trade_doc.pop('_id', None)
+        return {"message": f"{direction} order placed for {instrument}", "trade": trade_doc}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Trade execution failed: {str(e)}")
 
 # ==================== APP SETUP ====================
 

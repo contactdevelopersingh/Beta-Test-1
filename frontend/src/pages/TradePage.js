@@ -29,6 +29,8 @@ export default function TradePage() {
   const { data: marketData } = useMarketStream();
   const [instrument, setInstrument] = useState('EUR_USD');
   const [units, setUnits] = useState('1000');
+  const [usdAmount, setUsdAmount] = useState('');
+  const [sizeMode, setSizeMode] = useState('units'); // units or usd
   const [orderType, setOrderType] = useState('MARKET');
   const [stopLoss, setStopLoss] = useState('');
   const [takeProfit, setTakeProfit] = useState('');
@@ -77,10 +79,12 @@ export default function TradePage() {
     }
     setPlacing(true);
     try {
-      const u = parseInt(units) * (direction === 'SELL' ? -1 : 1);
+      const u = sizeMode === 'units' ? parseInt(units) * (direction === 'SELL' ? -1 : 1) : undefined;
+      const usd = sizeMode === 'usd' ? parseFloat(usdAmount) * (direction === 'SELL' ? -1 : 1) : undefined;
       const body = {
         instrument,
-        units: u,
+        units: u || undefined,
+        usd_amount: usd || undefined,
         order_type: orderType,
         stop_loss: stopLoss ? parseFloat(stopLoss) : null,
         take_profit: takeProfit ? parseFloat(takeProfit) : null,
@@ -200,8 +204,20 @@ export default function TradePage() {
             )}
 
             <div>
-              <label className="text-[11px] text-white/40 uppercase mb-1.5 block">Units</label>
-              <Input type="number" value={units} onChange={e => setUnits(e.target.value)} placeholder="1000" className="bg-white/[0.03] border-white/10 text-white" data-testid="units-input" />
+              <label className="text-[11px] text-white/40 uppercase mb-1.5 block">Size Mode</label>
+              <div className="flex gap-1">
+                <button onClick={() => setSizeMode('units')} className={`flex-1 px-3 py-1.5 rounded text-xs font-medium border ${sizeMode === 'units' ? 'bg-[#6366F1]/20 border-[#6366F1]/50 text-[#6366F1]' : 'bg-white/5 border-white/10 text-white/40'}`}>Units</button>
+                <button onClick={() => setSizeMode('usd')} className={`flex-1 px-3 py-1.5 rounded text-xs font-medium border ${sizeMode === 'usd' ? 'bg-[#6366F1]/20 border-[#6366F1]/50 text-[#6366F1]' : 'bg-white/5 border-white/10 text-white/40'}`}>USD</button>
+              </div>
+            </div>
+
+            <div>
+              <label className="text-[11px] text-white/40 uppercase mb-1.5 block">{sizeMode === 'units' ? 'Units' : 'USD Amount'}</label>
+              {sizeMode === 'units' ? (
+                <Input type="number" value={units} onChange={e => setUnits(e.target.value)} placeholder="1000" className="bg-white/[0.03] border-white/10 text-white" data-testid="units-input" />
+              ) : (
+                <Input type="number" value={usdAmount} onChange={e => setUsdAmount(e.target.value)} placeholder="100.00" className="bg-white/[0.03] border-white/10 text-white" data-testid="usd-input" />
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-3">

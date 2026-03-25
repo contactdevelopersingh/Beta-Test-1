@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useMarketStream } from '../hooks/useMarketStream';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Input } from '../components/ui/input';
-import { Zap, Target, ShieldAlert, TrendingUp, TrendingDown, Clock, Loader2, CheckCircle2, XCircle, BarChart3, Layers, Brain, Crosshair, Timer, AlertTriangle, ChevronDown, ChevronUp } from 'lucide-react';
+import { Zap, Target, ShieldAlert, TrendingUp, TrendingDown, Clock, Loader2, CheckCircle2, XCircle, BarChart3, Layers, Brain, Crosshair, Timer, AlertTriangle, ChevronDown, ChevronUp, ArrowUpRight, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 
 const CRYPTO_ASSETS = [
@@ -40,20 +41,7 @@ const INDIAN_ASSETS = [
   { id: 'bajfinance', name: 'Bajaj Finance' }, { id: 'adanient', name: 'Adani Enterprises' },
 ];
 
-const ALL_TIMEFRAMES = ['1m', '5m', '15m', '1H', '4H', '1D', '1W'];
-
-const STRATEGIES = [
-  { id: 'auto', name: 'Auto (Best Match)', icon: Brain },
-  { id: 'ema_crossover', name: 'EMA Crossover' },
-  { id: 'rsi_divergence', name: 'RSI Divergence' },
-  { id: 'smc', name: 'Smart Money (SMC)' },
-  { id: 'vwap', name: 'VWAP Strategy' },
-  { id: 'macd', name: 'MACD Strategy' },
-  { id: 'bollinger', name: 'Bollinger Bands' },
-  { id: 'ichimoku', name: 'Ichimoku Cloud' },
-  { id: 'fibonacci', name: 'Fibonacci Levels' },
-  { id: 'price_action', name: 'Pure Price Action' },
-];
+const ALL_TIMEFRAMES = ['1m', '3m', '5m', '10m', '15m', '30m', '1H', '2H', '3H', '4H', '1D', '3D', '1W'];
 
 const ConfidenceRing = ({ value }) => {
   const r = 28, c = 2 * Math.PI * r;
@@ -95,6 +83,7 @@ const ConfluenceDots = ({ score = 0, max = 6 }) => (
 
 export default function SignalsPage() {
   const { api } = useAuth();
+  const navigate = useNavigate();
   const { crypto, forex, indian } = useMarketStream(true, 2000);
   const [signals, setSignals] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -103,23 +92,40 @@ export default function SignalsPage() {
   const [assetId, setAssetId] = useState('bitcoin');
   const [selectedTimeframes, setSelectedTimeframes] = useState(['15m', '1H', '4H']);
   const [strategy, setStrategy] = useState('auto');
+  const [selectedStrategies, setSelectedStrategies] = useState([]);
+  const [comboMode, setComboMode] = useState(false);
   const [profitTarget, setProfitTarget] = useState('');
+  const [riskReward, setRiskReward] = useState('');
   const [filter, setFilter] = useState('all');
   const [expandedSignals, setExpandedSignals] = useState({});
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [planUsage, setPlanUsage] = useState(null);
+  const [availableStrategies, setAvailableStrategies] = useState([]);
+  const [executingSignal, setExecutingSignal] = useState(null);
 
   const assets = assetType === 'crypto' ? CRYPTO_ASSETS : assetType === 'forex' ? FOREX_ASSETS : INDIAN_ASSETS;
   const allPrices = [...crypto, ...forex, ...indian];
 
   useEffect(() => { fetchSignals(); fetchPlanUsage(); }, []);
 
-  useEffect(() => { setAssetId(assets[0]?.id || ''); }, [assetType]);
+  useEffect(() => {
+    setAssetId(assets[0]?.id || '');
+    fetchStrategies();
+    setSelectedStrategies([]);
+    setStrategy('auto');
+  }, [assetType]);
 
   const fetchPlanUsage = async () => {
     try {
       const res = await api.get('/user/plan-usage');
       setPlanUsage(res.data);
+    } catch (e) { console.error(e); }
+  };
+
+  const fetchStrategies = async () => {
+    try {
+      const res = await api.get(`/signals/strategies?market=${assetType}`);
+      setAvailableStrategies(res.data.strategies || []);
     } catch (e) { console.error(e); }
   };
 
@@ -137,7 +143,19 @@ export default function SignalsPage() {
         if (prev.length <= 1) return prev;
         return prev.filter(t => t !== tf);
       }
+      const maxTf = planUsage?.plan_name === 'free' ? 2 : 13;
+      if (prev.length >= maxTf) {
+        toast.error(`${planUsage?.plan_name || 'free'} plan allows max ${maxTf} timeframes`);
+        return prev;
+      }
       return [...prev, tf];
+    });
+  };
+
+  const toggleComboStrategy = (id) => {
+    setSelectedStrategies(prev => {
+      if (prev.includes(id)) return prev.filter(s => s !== id);
+      return [...prev, id];
     });
   };
 
@@ -160,10 +178,16 @@ export default function SignalsPage() {
         asset_type: assetType,
         timeframe: selectedTimeframes[Math.floor(selectedTimeframes.length / 2)] || selectedTimeframes[0],
         timeframes: selectedTimeframes,
-        strategy: strategy,
+        strategy: comboMode ? selectedStrategies[0] || 'auto' : strategy,
       };
+      if (comboMode && selectedStrategies.length > 0) {
+        payload.strategies = selectedStrategies;
+      }
       if (profitTarget && !isNaN(parseFloat(profitTarget))) {
         payload.profit_target = parseFloat(profitTarget);
+      }
+      if (riskReward.trim()) {
+        payload.risk_reward = riskReward.trim();
       }
       const res = await api.post('/signals/generate', payload);
       setSignals(prev => [res.data, ...prev]);
@@ -173,6 +197,17 @@ export default function SignalsPage() {
       toast.error(e.response?.data?.detail || 'Failed to generate signal');
     }
     setGenerating(false);
+  };
+
+  const executeSignal = async (signalId) => {
+    setExecutingSignal(signalId);
+    try {
+      await api.post(`/signals/${signalId}/execute?units=1000`);
+      toast.success('Trade executed from signal!');
+    } catch (e) {
+      toast.error(e.response?.data?.detail || 'Failed to execute trade');
+    }
+    setExecutingSignal(null);
   };
 
   const buyCount = signals.filter(s => s.direction === 'BUY').length;
@@ -231,20 +266,34 @@ export default function SignalsPage() {
             </div>
             <div>
               <label className="text-xs text-white/40 mb-1.5 block">Strategy</label>
-              <Select value={strategy} onValueChange={setStrategy}>
-                <SelectTrigger className="w-[180px] bg-black/50 border-white/10 text-white text-sm" data-testid="strategy-select">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-[#09090B] border-white/10">
-                  {STRATEGIES.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              {!comboMode ? (
+                <Select value={strategy} onValueChange={setStrategy}>
+                  <SelectTrigger className="w-[200px] bg-black/50 border-white/10 text-white text-sm" data-testid="strategy-select">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-[#09090B] border-white/10 max-h-[300px]">
+                    {availableStrategies.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <div className="text-xs text-[#6366F1]">{selectedStrategies.length} selected</div>
+              )}
             </div>
+            <button
+              onClick={() => { setComboMode(!comboMode); setSelectedStrategies([]); }}
+              className={`px-3 py-2 rounded-md text-[10px] font-medium border transition-all ${comboMode ? 'bg-[#6366F1]/20 border-[#6366F1]/50 text-[#6366F1]' : 'bg-white/5 border-white/10 text-white/40 hover:text-white/60'}`}
+              data-testid="combo-mode-toggle"
+            >
+              <Plus className="w-3 h-3 inline mr-1" />
+              {comboMode ? 'Combo ON' : 'Combo'}
+            </button>
           </div>
 
           {/* Row 2: Timeframes (multi-select toggle) */}
           <div>
-            <label className="text-xs text-white/40 mb-2 block">Timeframes (select 3+ for best confluence)</label>
+            <label className="text-xs text-white/40 mb-2 block">
+              Timeframes {planUsage?.plan_name === 'free' ? '(max 2 for free plan)' : '(select 3+ for best confluence)'}
+            </label>
             <div className="flex flex-wrap gap-2" data-testid="timeframe-toggles">
               {ALL_TIMEFRAMES.map(tf => (
                 <button key={tf} onClick={() => toggleTimeframe(tf)}
@@ -263,6 +312,31 @@ export default function SignalsPage() {
               </span>
             </div>
           </div>
+
+          {/* Combo Strategy Selector */}
+          {comboMode && (
+            <div>
+              <label className="text-xs text-white/40 mb-2 block">Select strategies to combine (e.g. SMC + ICT + CRT)</label>
+              <div className="flex flex-wrap gap-1.5" data-testid="combo-strategies">
+                {availableStrategies.filter(s => s.id !== 'auto').map(s => (
+                  <button key={s.id} onClick={() => toggleComboStrategy(s.id)}
+                    className={`px-2.5 py-1 rounded-md text-[10px] font-medium border transition-all ${
+                      selectedStrategies.includes(s.id)
+                        ? 'bg-[#6366F1]/20 border-[#6366F1]/50 text-[#6366F1]'
+                        : 'bg-white/5 border-white/10 text-white/40 hover:text-white/60'
+                    }`}
+                  >
+                    {s.name}
+                  </button>
+                ))}
+              </div>
+              {selectedStrategies.length > 0 && (
+                <p className="text-[10px] text-[#6366F1] mt-1">
+                  Combo: {selectedStrategies.map(id => availableStrategies.find(s => s.id === id)?.name || id).join(' + ')}
+                </p>
+              )}
+            </div>
+          )}
 
           {/* Advanced options toggle */}
           <button onClick={() => setShowAdvanced(!showAdvanced)}
@@ -284,8 +358,17 @@ export default function SignalsPage() {
                   data-testid="profit-target-input"
                 />
               </div>
+              <div>
+                <label className="text-xs text-white/40 mb-1.5 block">Risk:Reward Ratio</label>
+                <Input
+                  type="text" placeholder="e.g. 1:2.5"
+                  value={riskReward} onChange={e => setRiskReward(e.target.value)}
+                  className="w-[120px] bg-black/50 border-white/10 text-white text-sm"
+                  data-testid="rr-ratio-input"
+                />
+              </div>
               <p className="text-[10px] text-white/30 self-center">
-                Set a profit target to get estimated holding duration
+                Set custom R:R and profit target for tailored signals
               </p>
             </div>
           )}
@@ -384,7 +467,7 @@ export default function SignalsPage() {
                         <Badge variant="outline" className="text-[10px] border-white/15 text-white/45">{sig.market_condition}</Badge>
                         {sig.strategy_used && sig.strategy_used !== 'auto' && (
                           <Badge variant="outline" className="text-[10px] border-amber-500/25 text-amber-400">
-                            {STRATEGIES.find(s => s.id === sig.strategy_used)?.name || sig.strategy_used}
+                            {availableStrategies.find(s => s.id === sig.strategy_used)?.name || sig.strategy_used}
                           </Badge>
                         )}
                         {pnlPct !== null && (
@@ -535,6 +618,23 @@ export default function SignalsPage() {
                                 <span key={idx} className="font-data text-white/60">{lv}</span>
                               ))}
                             </div>
+                          )}
+                          {/* Push to Trade */}
+                          {sig.asset_type === 'forex' && planUsage?.limits?.trade_execution && (
+                            <Button
+                              size="sm"
+                              className="bg-[#6366F1] hover:bg-[#4F46E5] text-white text-[10px] mt-2"
+                              onClick={() => executeSignal(sig.signal_id)}
+                              disabled={executingSignal === sig.signal_id}
+                              data-testid={`execute-signal-${sig.signal_id}`}
+                            >
+                              {executingSignal === sig.signal_id ? (
+                                <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                              ) : (
+                                <ArrowUpRight className="w-3 h-3 mr-1" />
+                              )}
+                              Execute as Trade
+                            </Button>
                           )}
                         </div>
                       )}
