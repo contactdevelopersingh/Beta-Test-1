@@ -306,9 +306,18 @@ class SignalRequest(BaseModel):
     timeframe: str = "1D"
     timeframes: Optional[List[str]] = None
     strategy: str = "auto"
-    strategies: Optional[List[str]] = None  # Combo: ["smc","ict","crt"]
+    strategies: Optional[List[str]] = None
     profit_target: Optional[float] = None
-    risk_reward: Optional[str] = None  # Manual R:R like "1:2.5"
+    risk_reward: Optional[str] = None
+    num_tp_levels: int = 3  # 1, 2, or 3
+    trading_mode: str = "swing"  # scalping, day_trading, swing, position
+
+TRADING_MODES = {
+    "scalping": {"label": "Scalping", "desc": "Ultra-short trades (seconds to minutes). Tight SL, small TP, high frequency.", "default_hold": "1-30 minutes"},
+    "day_trading": {"label": "Day Trading", "desc": "Intraday trades, no overnight holds. Moderate SL/TP.", "default_hold": "1-8 hours"},
+    "swing": {"label": "Swing Trading", "desc": "Multi-day trades riding momentum swings. Wider SL/TP.", "default_hold": "1-7 days"},
+    "position": {"label": "Position Trading", "desc": "Long-term macro trades. Widest SL/TP, trend following.", "default_hold": "1-4 weeks"},
+}
 
 class AlertCreate(BaseModel):
     asset_id: str
@@ -951,6 +960,7 @@ async def price_ticker_loop():
             _alert_counter += 1
             if _alert_counter >= 5:
                 asyncio.create_task(check_alerts())
+                asyncio.create_task(check_signal_tp_sl())
                 _alert_counter = 0
         except Exception as e:
             logger.error(f"Ticker error: {e}")
@@ -975,6 +985,17 @@ async def get_live_prices():
 async def get_signals(user: dict = Depends(get_current_user)):
     signals = await db.signals.find({"user_id": user['user_id']}, {"_id": 0}).sort("created_at", -1).to_list(50)
     return {"signals": signals}
+
+@api_router.delete("/signals/{signal_id}")
+async def delete_signal(signal_id: str, user: dict = Depends(get_current_user)):
+    result = await db.signals.delete_one({"signal_id": signal_id, "user_id": user['user_id']})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Signal not found")
+    return {"message": "Signal deleted"}
+
+@api_router.get("/signals/trading-modes")
+async def get_trading_modes():
+    return {"modes": [{"id": k, **v} for k, v in TRADING_MODES.items()]}
 
 STRATEGY_DESCRIPTIONS = {
     # === UNIVERSAL STRATEGIES ===
@@ -1125,6 +1146,9 @@ async def generate_signal(data: SignalRequest, request: Request, user: dict = De
         strategy_desc = STRATEGY_DESCRIPTIONS.get(strategy, STRATEGY_DESCRIPTIONS["auto"])
     profit_target_str = f"User's profit target: {data.profit_target}%. Calculate holding duration to achieve this." if data.profit_target else "Estimate a realistic holding duration based on timeframes and market volatility."
     rr_instruction = f"User has specified a manual Risk:Reward ratio of {data.risk_reward}. STRICTLY use this R:R for calculating SL and TP levels." if data.risk_reward else "Risk:Reward minimum 1:1.5, target 1:2 to 1:3"
+    mode_info = TRADING_MODES.get(data.trading_mode, TRADING_MODES["swing"])
+    tp_instruction = f"Generate exactly {data.num_tp_levels} take-profit level(s). " + ("Only TP1." if data.num_tp_levels == 1 else "TP1 and TP2." if data.num_tp_levels == 2 else "TP1, TP2, and TP3.")
+    mode_instruction = f"TRADING MODE: {mode_info['label']} — {mode_info['desc']} Default hold: {mode_info['default_hold']}."
 
     signal_seed = random.randint(1000, 9999)
     direction_bias = random.choice(["bullish", "bearish", "mixed"])
@@ -1139,6 +1163,8 @@ Analyze: [{timeframes_str}]
 - Lower TF (5m/15m): ENTRY TIMING with precision
 
 === STRATEGY: {strategy_desc} ===
+=== {mode_instruction} ===
+=== {tp_instruction} ===
 
 === TECHNICAL INDICATOR ANALYSIS ===
 Analyze these indicators mentally, cite relevant ones:
@@ -1209,6 +1235,10 @@ JSON ONLY (no markdown):
             "user_id": user['user_id'],
             "asset_id": data.asset_id, "asset_name": data.asset_name,
             "asset_type": data.asset_type, **signal_data,
+            "trading_mode": data.trading_mode,
+            "num_tp_levels": data.num_tp_levels,
+            "tp1_hit": False, "tp2_hit": False, "tp3_hit": False, "sl_hit": False,
+            "tp1_hit_at": None, "tp2_hit_at": None, "tp3_hit_at": None, "sl_hit_at": None,
             "status": "active", "created_at": datetime.now(timezone.utc).isoformat()
         }
         await db.signals.insert_one(signal_doc)
@@ -1424,6 +1454,83 @@ async def mark_all_read(user: dict = Depends(get_current_user)):
     return {"message": "All marked as read"}
 
 # ==================== ALERT CHECKER (runs in ticker loop) ====================
+
+async def check_signal_tp_sl():
+    """Auto-track TP/SL hits on active signals and lock them"""
+    try:
+        all_prices = {}
+        for item in _live['crypto']:
+            all_prices[item['id']] = item['price']
+        for item in _live['forex']:
+            all_prices[item['id']] = item['price']
+        for item in _live['indian']:
+            all_prices[item['id']] = item['price']
+
+        active_signals = await db.signals.find({"status": "active"}, {"_id": 0}).to_list(500)
+        now_iso = datetime.now(timezone.utc).isoformat()
+        for sig in active_signals:
+            price = all_prices.get(sig.get('asset_id'))
+            if not price or not sig.get('entry_price'):
+                continue
+            direction = sig.get('direction', 'BUY')
+            updates = {}
+
+            # Check SL hit
+            if not sig.get('sl_hit') and sig.get('stop_loss'):
+                sl = sig['stop_loss']
+                if (direction == 'BUY' and price <= sl) or (direction == 'SELL' and price >= sl):
+                    updates['sl_hit'] = True
+                    updates['sl_hit_at'] = now_iso
+                    updates['status'] = 'stopped_out'
+
+            # Check TP1 hit
+            if not sig.get('tp1_hit') and sig.get('take_profit_1') and not sig.get('sl_hit'):
+                tp1 = sig['take_profit_1']
+                if (direction == 'BUY' and price >= tp1) or (direction == 'SELL' and price <= tp1):
+                    updates['tp1_hit'] = True
+                    updates['tp1_hit_at'] = now_iso
+
+            # Check TP2 hit (only if TP1 already hit)
+            if (sig.get('tp1_hit') or updates.get('tp1_hit')) and not sig.get('tp2_hit') and sig.get('take_profit_2') and not sig.get('sl_hit'):
+                tp2 = sig['take_profit_2']
+                if (direction == 'BUY' and price >= tp2) or (direction == 'SELL' and price <= tp2):
+                    updates['tp2_hit'] = True
+                    updates['tp2_hit_at'] = now_iso
+
+            # Check TP3 hit (only if TP2 already hit)
+            if (sig.get('tp2_hit') or updates.get('tp2_hit')) and not sig.get('tp3_hit') and sig.get('take_profit_3') and not sig.get('sl_hit'):
+                tp3 = sig['take_profit_3']
+                if (direction == 'BUY' and price >= tp3) or (direction == 'SELL' and price <= tp3):
+                    updates['tp3_hit'] = True
+                    updates['tp3_hit_at'] = now_iso
+                    num_tp = sig.get('num_tp_levels', 3)
+                    if num_tp == 3:
+                        updates['status'] = 'all_tp_hit'
+
+            # If only 1 or 2 TPs, close when those hit
+            if not updates.get('status'):
+                num_tp = sig.get('num_tp_levels', 3)
+                if num_tp == 1 and (sig.get('tp1_hit') or updates.get('tp1_hit')):
+                    updates['status'] = 'all_tp_hit'
+                elif num_tp == 2 and (sig.get('tp2_hit') or updates.get('tp2_hit')):
+                    updates['status'] = 'all_tp_hit'
+
+            if updates:
+                await db.signals.update_one({"signal_id": sig['signal_id']}, {"$set": updates})
+                # Send notification if status changed
+                if 'status' in updates:
+                    status_msg = "All take-profits hit!" if updates['status'] == 'all_tp_hit' else "Stop-loss hit"
+                    await db.notifications.insert_one({
+                        "notif_id": f"notif_{uuid.uuid4().hex[:12]}",
+                        "user_id": sig['user_id'],
+                        "type": "signal",
+                        "title": f"Signal Update: {sig.get('asset_name', '')}",
+                        "message": f"{sig.get('asset_name', '')} {sig.get('direction', '')} signal — {status_msg} (Price: {price})",
+                        "read": False,
+                        "created_at": now_iso
+                    })
+    except Exception as e:
+        logger.error(f"Signal TP/SL check error: {e}")
 
 async def check_alerts():
     """Check all active alerts against current live prices"""
@@ -2054,14 +2161,42 @@ async def close_position(instrument: str, user: dict = Depends(get_current_user)
     if not OANDA_API_KEY or not OANDA_ACCOUNT_ID:
         raise HTTPException(status_code=500, detail="OANDA not configured")
     try:
+        # First get the position to know which side to close
+        async with httpx.AsyncClient(timeout=15) as client:
+            pos_resp = await client.get(
+                f"{OANDA_BASE_URL}/accounts/{OANDA_ACCOUNT_ID}/positions/{instrument}",
+                headers={"Authorization": f"Bearer {OANDA_API_KEY}"}
+            )
+            pos_data = pos_resp.json()
+
+        position = pos_data.get('position', {})
+        long_units = int(position.get('long', {}).get('units', '0'))
+        short_units = int(position.get('short', {}).get('units', '0'))
+
+        close_body = {}
+        if long_units > 0:
+            close_body["longUnits"] = "ALL"
+        if short_units < 0:
+            close_body["shortUnits"] = "ALL"
+
+        if not close_body:
+            return {"message": f"No open position found for {instrument}"}
+
         async with httpx.AsyncClient(timeout=15) as client:
             resp = await client.put(
                 f"{OANDA_BASE_URL}/accounts/{OANDA_ACCOUNT_ID}/positions/{instrument}/close",
                 headers={"Authorization": f"Bearer {OANDA_API_KEY}", "Content-Type": "application/json"},
-                json={"longUnits": "ALL", "shortUnits": "ALL"}
+                json=close_body
             )
             result = resp.json()
+
+        if resp.status_code not in [200, 201]:
+            error = result.get('errorMessage', str(result))
+            raise HTTPException(status_code=400, detail=f"Close failed: {error}")
+
         return {"message": f"Position closed for {instrument}", "result": result}
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Close position error: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to close position: {str(e)}")

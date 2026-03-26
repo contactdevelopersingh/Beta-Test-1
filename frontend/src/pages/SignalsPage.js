@@ -7,7 +7,7 @@ import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Input } from '../components/ui/input';
-import { Zap, Target, ShieldAlert, TrendingUp, TrendingDown, Clock, Loader2, CheckCircle2, XCircle, BarChart3, Layers, Brain, Crosshair, Timer, AlertTriangle, ChevronDown, ChevronUp, ArrowUpRight, Plus } from 'lucide-react';
+import { Zap, Target, ShieldAlert, TrendingUp, TrendingDown, Clock, Loader2, CheckCircle2, XCircle, BarChart3, Layers, Brain, Crosshair, Timer, AlertTriangle, ChevronDown, ChevronUp, ArrowUpRight, Plus, Trash2, Lock } from 'lucide-react';
 import { toast } from 'sonner';
 
 const CRYPTO_ASSETS = [
@@ -102,11 +102,20 @@ export default function SignalsPage() {
   const [planUsage, setPlanUsage] = useState(null);
   const [availableStrategies, setAvailableStrategies] = useState([]);
   const [executingSignal, setExecutingSignal] = useState(null);
+  const [tradingMode, setTradingMode] = useState('swing');
+  const [numTpLevels, setNumTpLevels] = useState(3);
+  const [deletingSignal, setDeletingSignal] = useState(null);
 
   const assets = assetType === 'crypto' ? CRYPTO_ASSETS : assetType === 'forex' ? FOREX_ASSETS : INDIAN_ASSETS;
   const allPrices = [...crypto, ...forex, ...indian];
 
   useEffect(() => { fetchSignals(); fetchPlanUsage(); }, []);
+
+  // Auto-refresh signals every 10s to pick up TP/SL lock updates
+  useEffect(() => {
+    const interval = setInterval(fetchSignals, 10000);
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     setAssetId(assets[0]?.id || '');
@@ -179,6 +188,8 @@ export default function SignalsPage() {
         timeframe: selectedTimeframes[Math.floor(selectedTimeframes.length / 2)] || selectedTimeframes[0],
         timeframes: selectedTimeframes,
         strategy: comboMode ? selectedStrategies[0] || 'auto' : strategy,
+        trading_mode: tradingMode,
+        num_tp_levels: numTpLevels,
       };
       if (comboMode && selectedStrategies.length > 0) {
         payload.strategies = selectedStrategies;
@@ -208,6 +219,18 @@ export default function SignalsPage() {
       toast.error(e.response?.data?.detail || 'Failed to execute trade');
     }
     setExecutingSignal(null);
+  };
+
+  const deleteSignal = async (signalId) => {
+    setDeletingSignal(signalId);
+    try {
+      await api.delete(`/signals/${signalId}`);
+      setSignals(prev => prev.filter(s => s.signal_id !== signalId));
+      toast.success('Signal deleted');
+    } catch (e) {
+      toast.error(e.response?.data?.detail || 'Failed to delete');
+    }
+    setDeletingSignal(null);
   };
 
   const buyCount = signals.filter(s => s.direction === 'BUY').length;
@@ -338,6 +361,47 @@ export default function SignalsPage() {
             </div>
           )}
 
+          {/* Trading Mode & TP Levels */}
+          <div className="flex flex-wrap items-end gap-4">
+            <div>
+              <label className="text-xs text-white/40 mb-1.5 block">Trading Mode</label>
+              <div className="flex gap-1" data-testid="trading-mode-selector">
+                {[
+                  { id: 'scalping', label: 'Scalp' },
+                  { id: 'day_trading', label: 'Day' },
+                  { id: 'swing', label: 'Swing' },
+                  { id: 'position', label: 'Position' },
+                ].map(m => (
+                  <button key={m.id} onClick={() => setTradingMode(m.id)}
+                    className={`px-3 py-1.5 rounded-md text-[10px] font-medium border transition-all ${
+                      tradingMode === m.id
+                        ? 'bg-[#6366F1]/20 border-[#6366F1]/50 text-[#6366F1]'
+                        : 'bg-white/5 border-white/10 text-white/40 hover:text-white/60'
+                    }`}
+                  >
+                    {m.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="text-xs text-white/40 mb-1.5 block">Take Profit Levels</label>
+              <div className="flex gap-1" data-testid="tp-count-selector">
+                {[1, 2, 3].map(n => (
+                  <button key={n} onClick={() => setNumTpLevels(n)}
+                    className={`px-3 py-1.5 rounded-md text-xs font-medium border transition-all ${
+                      numTpLevels === n
+                        ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-400'
+                        : 'bg-white/5 border-white/10 text-white/40 hover:text-white/60'
+                    }`}
+                  >
+                    {n} TP{n > 1 ? 's' : ''}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
           {/* Advanced options toggle */}
           <button onClick={() => setShowAdvanced(!showAdvanced)}
             className="text-xs text-[#6366F1]/70 hover:text-[#6366F1] flex items-center gap-1 transition-colors"
@@ -430,21 +494,17 @@ export default function SignalsPage() {
             const currentPrice = liveItem?.price;
             const entryPrice = sig.entry_price;
             const isExpanded = expandedSignals[sig.signal_id];
-            let pnlPct = null, hitTP1 = false, hitTP2 = false, hitTP3 = false, hitSL = false;
+            // Use database-locked TP/SL status (persisted), fallback to live check
+            const hitTP1 = sig.tp1_hit || false;
+            const hitTP2 = sig.tp2_hit || false;
+            const hitTP3 = sig.tp3_hit || false;
+            const hitSL = sig.sl_hit || false;
+            const isClosed = sig.status === 'stopped_out' || sig.status === 'all_tp_hit';
+            let pnlPct = null;
             if (currentPrice && entryPrice && entryPrice > 0) {
-              if (sig.direction === 'BUY') {
-                pnlPct = ((currentPrice - entryPrice) / entryPrice) * 100;
-                hitTP1 = sig.take_profit_1 && currentPrice >= sig.take_profit_1;
-                hitTP2 = sig.take_profit_2 && currentPrice >= sig.take_profit_2;
-                hitTP3 = sig.take_profit_3 && currentPrice >= sig.take_profit_3;
-                hitSL = sig.stop_loss && currentPrice <= sig.stop_loss;
-              } else {
-                pnlPct = ((entryPrice - currentPrice) / entryPrice) * 100;
-                hitTP1 = sig.take_profit_1 && currentPrice <= sig.take_profit_1;
-                hitTP2 = sig.take_profit_2 && currentPrice <= sig.take_profit_2;
-                hitTP3 = sig.take_profit_3 && currentPrice <= sig.take_profit_3;
-                hitSL = sig.stop_loss && currentPrice >= sig.stop_loss;
-              }
+              pnlPct = sig.direction === 'BUY'
+                ? ((currentPrice - entryPrice) / entryPrice) * 100
+                : ((entryPrice - currentPrice) / entryPrice) * 100;
             }
             return (
               <Card key={sig.signal_id || i}
@@ -462,6 +522,14 @@ export default function SignalsPage() {
                           className={`text-[11px] font-semibold ${sig.direction === 'BUY' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20'}`}>
                           {sig.direction}
                         </Badge>
+                        {isClosed && (
+                          <Badge className={`text-[10px] font-semibold ${sig.status === 'all_tp_hit' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'}`}>
+                            {sig.status === 'all_tp_hit' ? 'TP Hit' : 'SL Hit'}
+                          </Badge>
+                        )}
+                        {sig.trading_mode && (
+                          <Badge variant="outline" className="text-[9px] border-cyan-500/25 text-cyan-400 capitalize">{sig.trading_mode?.replace('_', ' ')}</Badge>
+                        )}
                         <Badge variant="outline" className="text-[10px] border-[#6366F1]/30 text-[#6366F1]">Grade: {sig.grade}</Badge>
                         <RiskBadge riskReward={sig.risk_reward} />
                         <Badge variant="outline" className="text-[10px] border-white/15 text-white/45">{sig.market_condition}</Badge>
@@ -475,6 +543,15 @@ export default function SignalsPage() {
                             {pnlPct >= 0 ? '+' : ''}{pnlPct.toFixed(2)}% P&L
                           </Badge>
                         )}
+                        {/* Delete button */}
+                        <button
+                          onClick={(e) => { e.stopPropagation(); deleteSignal(sig.signal_id); }}
+                          disabled={deletingSignal === sig.signal_id}
+                          className="ml-auto text-white/20 hover:text-red-400 transition-colors p-1"
+                          data-testid={`delete-signal-${sig.signal_id}`}
+                        >
+                          {deletingSignal === sig.signal_id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                        </button>
                       </div>
 
                       {/* Meta Row: Timeframes, Duration, Confluence */}
@@ -512,29 +589,37 @@ export default function SignalsPage() {
                           <p className="text-[10px] text-white/40 flex items-center gap-1"><Target className="w-3 h-3" /> Entry</p>
                           <p className="text-sm sm:text-base font-data font-semibold text-white" data-testid={`entry-${sig.signal_id}`}>{entryPrice || 'N/A'}</p>
                         </div>
-                        <div>
+                        <div className={hitTP1 ? 'bg-emerald-500/5 rounded-lg p-1 -m-1' : ''}>
                           <p className="text-[10px] text-white/40 flex items-center gap-1">
-                            {hitTP1 ? <CheckCircle2 className="w-3 h-3 text-emerald-400" /> : <TrendingUp className="w-3 h-3" />} TP1
+                            {hitTP1 ? <><Lock className="w-3 h-3 text-emerald-400" /> <span className="text-emerald-400">TP1</span></> : <><TrendingUp className="w-3 h-3" /> TP1</>}
                           </p>
                           <p className={`text-sm sm:text-base font-data font-semibold ${hitTP1 ? 'text-emerald-400' : 'text-emerald-500/80'}`}>{sig.take_profit_1 || 'N/A'}</p>
+                          {hitTP1 && <p className="text-[8px] text-emerald-400/60">LOCKED</p>}
                         </div>
-                        <div>
+                        {(sig.num_tp_levels || 3) >= 2 && (
+                        <div className={hitTP2 ? 'bg-emerald-500/5 rounded-lg p-1 -m-1' : ''}>
                           <p className="text-[10px] text-white/40 flex items-center gap-1">
-                            {hitTP2 ? <CheckCircle2 className="w-3 h-3 text-emerald-400" /> : <TrendingUp className="w-3 h-3" />} TP2
+                            {hitTP2 ? <><Lock className="w-3 h-3 text-emerald-400" /> <span className="text-emerald-400">TP2</span></> : <><TrendingUp className="w-3 h-3" /> TP2</>}
                           </p>
                           <p className={`text-sm sm:text-base font-data font-semibold ${hitTP2 ? 'text-emerald-400' : 'text-emerald-500/80'}`}>{sig.take_profit_2 || 'N/A'}</p>
+                          {hitTP2 && <p className="text-[8px] text-emerald-400/60">LOCKED</p>}
                         </div>
-                        <div>
+                        )}
+                        {(sig.num_tp_levels || 3) >= 3 && (
+                        <div className={hitTP3 ? 'bg-emerald-500/5 rounded-lg p-1 -m-1' : ''}>
                           <p className="text-[10px] text-white/40 flex items-center gap-1">
-                            {hitTP3 ? <CheckCircle2 className="w-3 h-3 text-[#10B981]" /> : <TrendingUp className="w-3 h-3" />} TP3
+                            {hitTP3 ? <><Lock className="w-3 h-3 text-emerald-400" /> <span className="text-emerald-400">TP3</span></> : <><TrendingUp className="w-3 h-3" /> TP3</>}
                           </p>
                           <p className={`text-sm sm:text-base font-data font-semibold ${hitTP3 ? 'text-emerald-400' : 'text-emerald-500/60'}`}>{sig.take_profit_3 || 'N/A'}</p>
+                          {hitTP3 && <p className="text-[8px] text-emerald-400/60">LOCKED</p>}
                         </div>
-                        <div>
+                        )}
+                        <div className={hitSL ? 'bg-red-500/5 rounded-lg p-1 -m-1' : ''}>
                           <p className="text-[10px] text-white/40 flex items-center gap-1">
-                            {hitSL ? <XCircle className="w-3 h-3 text-red-400" /> : <ShieldAlert className="w-3 h-3" />} Stop Loss
+                            {hitSL ? <><Lock className="w-3 h-3 text-red-400" /> <span className="text-red-400">SL</span></> : <><ShieldAlert className="w-3 h-3" /> SL</>}
                           </p>
                           <p className={`text-sm sm:text-base font-data font-semibold ${hitSL ? 'text-red-400' : 'text-red-500/80'}`}>{sig.stop_loss || 'N/A'}</p>
+                          {hitSL && <p className="text-[8px] text-red-400/60">STOPPED OUT</p>}
                         </div>
                         <div>
                           <p className="text-[10px] text-white/40 flex items-center gap-1"><Clock className="w-3 h-3" /> R:R</p>
