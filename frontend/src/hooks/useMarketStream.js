@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
-export const useMarketStream = (enabled = true, interval = 1500) => {
+export const useMarketStream = (enabled = true, interval = 800) => {
   const [data, setData] = useState({
     crypto: [], forex: [], indian: [],
     gainers: [], losers: [],

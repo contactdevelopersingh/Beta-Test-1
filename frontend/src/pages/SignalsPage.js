@@ -84,7 +84,7 @@ const ConfluenceDots = ({ score = 0, max = 6 }) => (
 export default function SignalsPage() {
   const { api } = useAuth();
   const navigate = useNavigate();
-  const { crypto, forex, indian } = useMarketStream(true, 2000);
+  const { crypto, forex, indian } = useMarketStream(true, 800);
   const [signals, setSignals] = useState([]);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);

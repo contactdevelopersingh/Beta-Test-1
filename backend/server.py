@@ -94,7 +94,7 @@ CRYPTO_SYM_MAP = {v: k for k, v in CRYPTO_ID_MAP.items()}
 
 # Simple in-memory cache
 _cache: Dict[str, Dict] = {}
-_executor = ThreadPoolExecutor(max_workers=3)
+_executor = ThreadPoolExecutor(max_workers=6)
 
 # ==================== OANDA FOREX LIVE DATA ====================
 
@@ -236,14 +236,14 @@ async def get_live_market_data(symbols, cache_key, ttl=180):
 app = FastAPI(title="Titan Trade API")
 api_router = APIRouter(prefix="/api")
 
-# Rate Limiter
-limiter = Limiter(key_func=get_remote_address)
+# Rate Limiter - relaxed for shared proxy environments
+limiter = Limiter(key_func=get_remote_address, default_limits=["200/minute"])
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
-# Brute-force protection: track failed logins
+# Brute-force protection: track failed logins by email
 _login_attempts: Dict[str, list] = {}
-MAX_LOGIN_ATTEMPTS = 5
+MAX_LOGIN_ATTEMPTS = 15
 LOGIN_LOCKOUT_SECONDS = 300
 
 def check_brute_force(email: str):
@@ -417,23 +417,23 @@ async def get_current_user(request: Request) -> dict:
 # ==================== AUTH ROUTES ====================
 
 @api_router.post("/auth/register")
-@limiter.limit("5/minute")
+@limiter.limit("30/minute")
 async def register(data: UserRegister, request: Request, response: Response):
-    data.email = sanitize_input(data.email, 200).lower().strip()
-    data.name = sanitize_input(data.name, 100)
-    if not re.match(r'^[^@]+@[^@]+\.[^@]+$', data.email):
+    email = data.email.lower().strip()
+    name = sanitize_input(data.name, 100)
+    if not re.match(r'^[^@]+@[^@]+\.[^@]+$', email):
         raise HTTPException(status_code=400, detail="Invalid email format")
     if len(data.password) < 6:
         raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
-    existing = await db.users.find_one({"email": data.email}, {"_id": 0})
+    existing = await db.users.find_one({"email": email}, {"_id": 0})
     if existing:
         raise HTTPException(status_code=400, detail="Email already registered")
     user_id = f"user_{uuid.uuid4().hex[:12]}"
     hashed = bcrypt.hashpw(data.password.encode(), bcrypt.gensalt()).decode()
     user_doc = {
         "user_id": user_id,
-        "email": data.email,
-        "name": data.name,
+        "email": email,
+        "name": name,
         "password": hashed,
         "picture": None,
         "auth_type": "jwt",
@@ -442,10 +442,10 @@ async def register(data: UserRegister, request: Request, response: Response):
     await db.users.insert_one(user_doc)
     token = create_jwt_token(user_id)
     response.set_cookie(key="session_token", value=token, httponly=True, secure=True, samesite="none", max_age=7*24*60*60, path="/")
-    return {"user_id": user_id, "email": data.email, "name": data.name, "token": token}
+    return {"user_id": user_id, "email": email, "name": name, "token": token}
 
 @api_router.post("/auth/login")
-@limiter.limit("5/minute")
+@limiter.limit("30/minute")
 async def login(data: UserLogin, request: Request, response: Response):
     data.email = data.email.lower().strip()
     check_brute_force(data.email)
@@ -940,12 +940,12 @@ async def price_ticker_loop():
     while True:
         try:
             now = time.time()
-            if now - _live['last_crypto_fetch'] > 30:
+            if now - _live['last_crypto_fetch'] > 10:
                 asyncio.create_task(_load_crypto())
-            # OANDA forex: fetch every 5 seconds for real-time data
-            if (now - _live['last_forex_fetch'] > 5) and (is_forex_market_open() or not _live['forex']):
+            # OANDA forex: fetch every 3 seconds for real-time data
+            if (now - _live['last_forex_fetch'] > 3) and (is_forex_market_open() or not _live['forex']):
                 asyncio.create_task(_load_forex())
-            if (now - _live['last_indian_fetch'] > 300) and (is_indian_market_open() or not _live['indian']):
+            if (now - _live['last_indian_fetch'] > 60) and (is_indian_market_open() or not _live['indian']):
                 asyncio.create_task(_load_indian())
             _tick()
             _alert_counter += 1
@@ -1054,7 +1054,7 @@ async def get_strategies(market: str = "all"):
     return {"strategies": strategies, "market": market}
 
 @api_router.post("/signals/generate")
-@limiter.limit("10/minute")
+@limiter.limit("30/minute")
 async def generate_signal(data: SignalRequest, request: Request, user: dict = Depends(get_current_user)):
     if not EMERGENT_LLM_KEY:
         raise HTTPException(status_code=500, detail="AI service not configured")
@@ -1288,7 +1288,7 @@ async def remove_from_watchlist(watchlist_id: str, user: dict = Depends(get_curr
 # ==================== BEAST AI CHAT ====================
 
 @api_router.post("/chat")
-@limiter.limit("20/minute")
+@limiter.limit("60/minute")
 async def beast_chat(data: ChatMessage, request: Request, user: dict = Depends(get_current_user)):
     if not EMERGENT_LLM_KEY:
         raise HTTPException(status_code=500, detail="AI service not configured")

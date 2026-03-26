@@ -15,7 +15,7 @@ const COLORS = ['#6366F1', '#00FF94', '#FF2E2E', '#EAB308', '#06B6D4', '#F97316'
 
 export default function PortfolioPage() {
   const { api } = useAuth();
-  const { crypto, forex, indian, connected, priceChanges } = useMarketStream(true, 2000);
+  const { crypto, forex, indian, connected, priceChanges } = useMarketStream(true, 800);
   const [holdings, setHoldings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);

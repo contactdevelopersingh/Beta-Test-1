@@ -90,7 +90,7 @@ const MoverCard = ({ items, title, isGainer }) => (
 export default function DashboardPage() {
   const { api } = useAuth();
   const navigate = useNavigate();
-  const { crypto, forex, indian, gainers, losers, connected, tick, priceChanges, market_status } = useMarketStream(true, 1500);
+  const { crypto, forex, indian, gainers, losers, connected, tick, priceChanges, market_status } = useMarketStream(true, 800);
   const [sentiment, setSentiment] = useState(null);
   const [signals, setSignals] = useState([]);
   const [portfolio, setPortfolio] = useState({ total_invested: 0, holdings_count: 0, holdings: [] });

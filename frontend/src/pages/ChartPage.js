@@ -21,7 +21,7 @@ export default function ChartPage() {
   const { assetType, assetId } = useParams();
   const { api } = useAuth();
   const navigate = useNavigate();
-  const { crypto, forex, indian, priceChanges } = useMarketStream(true, 1500);
+  const { crypto, forex, indian, priceChanges } = useMarketStream(true, 800);
   const [candles, setCandles] = useState([]);
   const [period, setPeriod] = useState('1mo');
   const [loading, setLoading] = useState(true);

@@ -34,7 +34,7 @@ const ALERT_ASSETS = {
 
 export default function AlertsPage() {
   const { api } = useAuth();
-  const { crypto, forex, indian, connected } = useMarketStream(true, 2000);
+  const { crypto, forex, indian, connected } = useMarketStream(true, 800);
   const [alerts, setAlerts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);

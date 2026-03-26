@@ -1,0 +1,107 @@
+{
+  "summary": "Iteration 14 - Bug Fixes for Login/Signup and Market Data Speed. All 11 backend tests passed (100%). Frontend login, signup, and dashboard flows all working correctly. Market data shows all 3 markets (crypto, forex, indian) with LIVE indicator.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "passed_tests": {
+    "backend": [
+      "Admin 1 (contact.developersingh@gmail.com / admin123) login SUCCESS",
+      "Admin 2 (infinityanirudra@gmail.com / admin456) login SUCCESS",
+      "Register new user and immediately login with those credentials SUCCESS",
+      "10 rapid logins in sequence don't get rate-limited (30/min limit) SUCCESS",
+      "Wrong password returns 401 not 429 SUCCESS",
+      "Brute-force threshold is 15 (14 failed attempts all returned 401) SUCCESS",
+      "Market data /api/market/live returns all 3 markets SUCCESS",
+      "Market tick count increments rapidly (3+ ticks in 3 seconds) SUCCESS",
+      "Security headers still present (X-Content-Type-Options, X-Frame-Options, X-XSS-Protection, Referrer-Policy) SUCCESS",
+      "Admin 1 can access /api/admin/stats SUCCESS",
+      "Admin 2 can access /api/admin/stats SUCCESS"
+    ],
+    "frontend": [
+      "Login flow: fill email + password -> click Login -> redirects to /dashboard SUCCESS",
+      "Signup flow: fill name + email + password -> click Create Account -> redirects to /dashboard SUCCESS",
+      "Dashboard loads with LIVE indicator showing tick count (e.g., LIVE#107, LIVE#174)",
+      "Dashboard shows real-time data: 83 tracked assets (19C / 20F / 44I)",
+      "Markets page shows Crypto tab (19 assets)",
+      "Markets page shows Forex tab (20 pairs) with OANDA bid/ask/spread",
+      "Markets page shows Indian tab (44 assets) with indices and stocks",
+      "User name displayed in sidebar after signup"
+    ]
+  },
+  "bug_fixes_verified": {
+    "rate_limiting_relaxed": {
+      "status": "FIXED",
+      "old_value": "5/minute",
+      "new_value": "30/minute",
+      "verification": "10 rapid logins succeeded without rate limiting"
+    },
+    "brute_force_threshold_increased": {
+      "status": "FIXED",
+      "old_value": "5 attempts",
+      "new_value": "15 attempts",
+      "verification": "14 failed attempts all returned 401, not 429"
+    },
+    "sanitize_input_email_corruption": {
+      "status": "FIXED",
+      "description": "Register endpoint now uses local variables (email, name) instead of mutating data.email/data.name",
+      "verification": "New user registration works and user can immediately login"
+    },
+    "market_data_speed": {
+      "status": "FIXED",
+      "old_values": "crypto 30s, forex 5s, indian 300s",
+      "new_values": "crypto 10s, forex 3s, indian 60s",
+      "verification": "Market tick increments 3+ times in 3 seconds"
+    },
+    "frontend_polling_speed": {
+      "status": "FIXED",
+      "old_value": "1500ms",
+      "new_value": "800ms",
+      "verification": "LIVE indicator tick count updates rapidly"
+    },
+    "thread_pool_workers": {
+      "status": "FIXED",
+      "old_value": "3 workers",
+      "new_value": "6 workers",
+      "verification": "Market data loads quickly for all 3 markets"
+    }
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iteration14_bugfixes.py",
+    "/app/test_reports/pytest/pytest_results_iter14.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [],
+  "updated_files": [
+    "/app/backend/tests/test_iteration14_bugfixes.py"
+  ],
+  "success_rate": {
+    "backend": "100% (11/11 tests passed)",
+    "frontend": "100% (all flows verified)"
+  },
+  "test_credentials": {
+    "admin_1": {
+      "email": "contact.developersingh@gmail.com",
+      "password": "admin123",
+      "role": "admin"
+    },
+    "admin_2": {
+      "email": "infinityanirudra@gmail.com",
+      "password": "admin456",
+      "role": "admin"
+    },
+    "test_user": {
+      "email": "freshtest@gmail.com",
+      "password": "pass123"
+    }
+  },
+  "seed_data_creation": "Multiple test users created during testing (test_signup_*, test_newuser_*)",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Iteration 14 verified all bug fixes: 1) Rate limiting relaxed from 5/min to 30/min - 10 rapid logins work without rate limiting. 2) Brute-force threshold increased from 5 to 15 - 14 failed attempts return 401, not 429. 3) sanitize_input email corruption fixed - register uses local variables now, new users can register and immediately login. 4) Market data speed improved - crypto 10s, forex 3s, indian 60s. 5) Frontend polling 800ms (from 1500ms). 6) ThreadPoolExecutor 6 workers (from 3). All security headers still present. Both admins can access admin endpoints. Markets page shows all 3 markets with LIVE indicator. All APIs are LIVE (no mocking)."
+}

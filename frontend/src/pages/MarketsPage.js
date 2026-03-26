@@ -40,7 +40,7 @@ const MiniChart = ({ data, positive }) => {
 export default function MarketsPage() {
   const { api } = useAuth();
   const navigate = useNavigate();
-  const { crypto, forex, indian, connected, tick, priceChanges, market_status } = useMarketStream(true, 1500);
+  const { crypto, forex, indian, connected, tick, priceChanges, market_status } = useMarketStream(true, 800);
   const [tab, setTab] = useState('crypto');
   const [search, setSearch] = useState('');
   const [sparklines, setSparklines] = useState({});
