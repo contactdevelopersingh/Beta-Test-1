@@ -1119,6 +1119,26 @@ async def generate_signal(data: SignalRequest, request: Request, user: dict = De
     if not market_context:
         market_context = f"Asset: {data.asset_name}, Type: {data.asset_type}"
 
+    # Fetch TradingView Technical Analysis (real computed indicators)
+    tv_analysis = ""
+    try:
+        async with httpx.AsyncClient(timeout=8) as tv_client:
+            tv_resp = await tv_client.get(f"http://127.0.0.1:8099/ta/{data.asset_id}")
+            tv_data = tv_resp.json()
+        if tv_data and not tv_data.get('error'):
+            tv_tfs = tv_data.get('timeframes', {})
+            tv_summary = tv_data.get('summary', {})
+            tv_lines = [f"TradingView Consensus: {tv_summary.get('label', 'N/A')}"]
+            for tf_name in ['1m', '5m', '15m', '1H', '4H', '1D', '1W']:
+                tf_d = tv_tfs.get(tf_name)
+                if tf_d:
+                    tv_lines.append(f"  {tf_name}: Overall={tf_d['overall']['label']}({tf_d['overall']['value']:.2f}), Oscillators={tf_d['oscillators']['label']}({tf_d['oscillators']['value']:.2f}), MAs={tf_d['moving_averages']['label']}({tf_d['moving_averages']['value']:.2f})")
+            tv_analysis = "\n".join(tv_lines)
+            logger.info(f"TV analysis fetched for {data.asset_id}: {tv_summary.get('bias', 'N/A')}")
+    except Exception as e:
+        logger.warning(f"TradingView analysis unavailable for {data.asset_id}: {e}")
+        tv_analysis = "TradingView data: unavailable"
+
     # Multi-timeframe setup
     timeframes = data.timeframes or [data.timeframe]
     if len(timeframes) < 3:
@@ -1204,7 +1224,7 @@ JSON ONLY (no markdown):
         system_message=system_prompt
     )
     try:
-        msg = UserMessage(text=f"Generate a professional multi-timeframe trading signal for {data.asset_name} ({data.asset_type.upper()}).\nPrimary Timeframe: {data.timeframe}\nAll Timeframes: {timeframes_str}\nStrategy: {strategy}\n{market_context}")
+        msg = UserMessage(text=f"Generate a professional multi-timeframe trading signal for {data.asset_name} ({data.asset_type.upper()}).\nPrimary Timeframe: {data.timeframe}\nAll Timeframes: {timeframes_str}\nStrategy: {strategy}\nTrading Mode: {data.trading_mode}\n\n=== LIVE MARKET DATA (from OANDA/Kraken/yfinance) ===\n{market_context}\n\n=== TRADINGVIEW TECHNICAL ANALYSIS (real computed indicators) ===\n{tv_analysis}\n\nIMPORTANT: Use BOTH data sources above. The TradingView data shows REAL computed indicator values across timeframes. Align your signal direction with the TradingView consensus when confidence is high. If TradingView shows Strong Buy/Sell across 3+ timeframes, give HIGH confidence. If TradingView contradicts your analysis, lower confidence and explain the divergence.")
         response_text = await chat.send_message(msg)
         try:
             clean = response_text.strip()
