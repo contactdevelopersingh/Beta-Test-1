@@ -1,5 +1,36 @@
 # Titan Trade - Changelog
 
+## Mar 26, 2026 - TP/SL Locking, Trading Modes, Signal Fixes (Fork Job 5)
+### TP/SL Auto-Locking System
+- TP1 locks when hit, then TP2 can lock, then TP3 (sequential)
+- SL locks when hit, signal auto-closes as "stopped_out"
+- All TPs hit → signal status "all_tp_hit"
+- Locked TPs show green highlight + lock icon + "LOCKED" text
+- SL hit shows red highlight + lock icon + "STOPPED OUT"
+- Notifications sent on signal close (TP/SL hit)
+- check_signal_tp_sl() runs every 5 ticks in ticker loop
+
+### Configurable TP Count
+- User selects 1, 2, or 3 take-profit levels
+- With 1 TP: signal closes after TP1 hit
+- With 2 TPs: closes after TP2 hit
+- Hidden TP columns for unused levels
+
+### Trading Modes
+- Scalping: Ultra-short (1-30min), tight SL/TP
+- Day Trading: Intraday (1-8 hours), moderate SL/TP
+- Swing Trading: Multi-day (1-7 days), wider SL/TP
+- Position Trading: Long-term (1-4 weeks), widest SL/TP
+- Timeframes remain fully user-controlled (not auto-changed)
+
+### Signal Deletion
+- Delete button (trash icon) on each signal card
+- DELETE /api/signals/{signal_id} endpoint
+- Signals auto-refresh every 10s for TP/SL status updates
+
+### Trade Close Fix
+- Fixed OANDA close position: now GETs position first to determine long/short side, then sends correct close body (was sending both longUnits+shortUnits which OANDA rejected)
+
 ## Mar 26, 2026 - Login Fix, Market Speed Boost (Fork Job 4)
 ### Login/Signup Bug Fix
 - Rate limits relaxed: login/register 30/min (was 5/min — blocked all users behind shared proxy)
