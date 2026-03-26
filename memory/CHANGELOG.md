@@ -1,5 +1,19 @@
 # Titan Trade - Changelog
 
+## Mar 26, 2026 - Login Fix, Market Speed Boost (Fork Job 4)
+### Login/Signup Bug Fix
+- Rate limits relaxed: login/register 30/min (was 5/min — blocked all users behind shared proxy)
+- Brute-force threshold: 15 attempts (was 5)
+- Fixed sanitize_input corrupting email during registration (used local vars instead of mutating Pydantic model)
+
+### Market Data Speed Boost
+- Crypto: 10s refresh (was 30s)
+- Forex: 3s refresh (was 5s)
+- Indian: 60s refresh (was 300s — 5x faster)
+- Frontend polling: 800ms (was 1500ms)
+- ThreadPoolExecutor: 6 workers (was 3)
+- All pages updated to use 800ms polling
+
 ## Mar 25, 2026 - Security Hardening, Dual Admin, Enhanced AI Prompt, Animations (Fork Job 3)
 ### Dual Admin Access
 - Primary: contact.developersingh@gmail.com / admin123
