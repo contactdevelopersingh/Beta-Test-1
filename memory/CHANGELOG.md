@@ -1,5 +1,21 @@
 # Titan Trade - Changelog
 
+## Mar 26, 2026 - TradingView API Integration (Fork Job 6)
+### TradingView Microservice
+- Node.js service at /app/backend/tv_service/ (port 8099, supervisor-managed)
+- Uses @mathieuc/tradingview library to get REAL computed indicator values
+- 56 symbols mapped (crypto, forex, Indian stocks)
+- GET /ta/{assetId} returns: oscillators, moving averages, overall rating per timeframe (1m-1M)
+- Summary: bias (Bullish/Bearish/Neutral), confluence count, label
+- 30-second cache to avoid over-requesting
+
+### Dual-Source Signal Generation
+- AI now receives BOTH: OANDA/Kraken/yfinance live data + TradingView computed analysis
+- TradingView ratings injected into prompt: "15m: Strong Sell(-0.89), 1H: Sell(-0.45)..."
+- AI instructed: Align with TV consensus when confidence high, explain divergence if sources disagree
+- New signal fields: technical_summary (RSI=XX, MACD=state), risk_level (LOW/MEDIUM/HIGH), session_note
+- Target: Significantly improved signal accuracy by combining institutional data + TradingView indicators
+
 ## Mar 26, 2026 - TP/SL Locking, Trading Modes, Signal Fixes (Fork Job 5)
 ### TP/SL Auto-Locking System
 - TP1 locks when hit, then TP2 can lock, then TP3 (sequential)
