@@ -1,5 +1,27 @@
 # Titan Trade - Changelog
 
+## Mar 26, 2026 - Indian Stock Analysis Module (Fork Job 7)
+### Stock Analysis Page (/stock-analysis)
+- Deep fundamental analysis for 40+ Indian stocks (NIFTY 50 components)
+- Valuation metrics: P/E, P/B, EV/EBITDA, Price/Sales, PEG, EPS, Book Value
+- Profitability: ROE, ROA, OPM, NPM, Dividend Yield, Revenue/Earnings Growth
+- Financial Health: Debt/Equity, Current Ratio, FCF, Total Debt, Total Cash
+- Quarterly Results: Last 6-8 quarters with sortable table
+- Annual P&L: 5-10 years with all line items
+- Balance Sheet: 4-10 years with assets/liabilities breakdown
+- Cash Flow: 5-10 years with CFO/CFI/CFF
+- Shareholding Pattern: Promoters/FII/DII/Public with donut chart + progress bars
+- Peer Comparison: Sector peers with color-coded comparison table
+- Auto Pros & Cons: AI-generated green/red highlights based on metrics
+- Analyst Recommendations: Target prices, buy/sell consensus
+- Data source: yfinance (live, 5min cache)
+
+### Stock Screener (/screener)
+- 8 configurable filters: P/E, ROE, D/E, Market Cap, Dividend Yield, OPM etc.
+- 7 pre-built presets: Warren Buffett, Benjamin Graham, Peter Lynch, Dividend Aristocrats, Debt Free, High Promoter, Value Picks
+- Sortable results table with color-coded metrics
+- Click any result to open full analysis
+
 ## Mar 26, 2026 - TradingView API Integration (Fork Job 6)
 ### TradingView Microservice
 - Node.js service at /app/backend/tv_service/ (port 8099, supervisor-managed)
