@@ -2522,6 +2522,50 @@ async def execute_signal_as_trade(signal_id: str, units: int = 1000, user: dict 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Trade execution failed: {str(e)}")
 
+# ==================== STOCK ANALYSIS ====================
+
+from services.stock_analysis import get_stock_analysis, get_peers, run_screener, get_all_sectors, get_stock_list
+
+@api_router.get("/stocks/list")
+async def list_stocks():
+    return {"stocks": get_stock_list(), "sectors": get_all_sectors()}
+
+@api_router.get("/stocks/analysis/{symbol}")
+async def stock_analysis(symbol: str):
+    data = await get_stock_analysis(symbol)
+    if 'error' in data:
+        raise HTTPException(status_code=404, detail=f"Could not fetch data for {symbol}")
+    return data
+
+@api_router.get("/stocks/peers/{symbol}")
+async def stock_peers(symbol: str, sector: str = ""):
+    if not sector:
+        analysis = await get_stock_analysis(symbol)
+        sector = analysis.get('sector', '')
+    if not sector:
+        return {"peers": []}
+    peers = await get_peers(sector, symbol.upper())
+    return {"peers": peers}
+
+@api_router.post("/stocks/screener")
+async def stock_screener(request: Request):
+    body = await request.json()
+    filters = body.get('filters', {})
+    results = await run_screener(filters)
+    return {"results": results, "count": len(results)}
+
+@api_router.get("/stocks/screener/presets")
+async def screener_presets():
+    return {"presets": [
+        {"id": "buffett", "name": "Warren Buffett Style", "filters": {"roe_min": 15, "de_max": 0.5, "opm_min": 15}},
+        {"id": "graham", "name": "Benjamin Graham Value", "filters": {"pe_max": 15, "de_max": 0.5, "dy_min": 1}},
+        {"id": "growth", "name": "Peter Lynch Growth", "filters": {"roe_min": 12, "opm_min": 10}},
+        {"id": "dividend", "name": "Dividend Aristocrats", "filters": {"dy_min": 2, "de_max": 1}},
+        {"id": "debt_free", "name": "Debt Free Companies", "filters": {"de_max": 0.1}},
+        {"id": "high_promoter", "name": "High Promoter Holding", "filters": {"roe_min": 10}},
+        {"id": "52w_value", "name": "Value Picks", "filters": {"pe_max": 20, "roe_min": 10}},
+    ]}
+
 # ==================== APP SETUP ====================
 
 app.include_router(api_router)

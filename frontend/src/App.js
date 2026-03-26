@@ -21,6 +21,8 @@ import AdminPage from './pages/AdminPage';
 import PricingPage from './pages/PricingPage';
 import LeaderboardPage from './pages/LeaderboardPage';
 import TradePage from './pages/TradePage';
+import StockAnalysisPage from './pages/StockAnalysisPage';
+import ScreenerPage from './pages/ScreenerPage';
 
 function AppRouter() {
   const location = useLocation();
@@ -52,6 +54,9 @@ function AppRouter() {
         <Route path="/pricing" element={<PricingPage />} />
         <Route path="/leaderboard" element={<LeaderboardPage />} />
         <Route path="/trade" element={<TradePage />} />
+        <Route path="/stock-analysis" element={<StockAnalysisPage />} />
+        <Route path="/stock-analysis/:symbol" element={<StockAnalysisPage />} />
+        <Route path="/screener" element={<ScreenerPage />} />
         <Route path="/settings" element={<SettingsPage />} />
       </Route>
     </Routes>
