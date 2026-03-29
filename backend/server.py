@@ -2781,6 +2781,48 @@ async def get_portfolio_heat(user: dict = Depends(get_current_user)):
         }
     }
 
+# ==================== INDIAN MARKET EXTENDED ====================
+
+from services.indian_market import get_all_nifty_stocks, get_market_movers, get_stock_quote, NIFTY500_TOP
+
+@api_router.get("/indian/stocks")
+async def indian_all_stocks():
+    """Get all major Indian stocks (NIFTY 500 top) with live prices"""
+    stocks = await get_all_nifty_stocks()
+    return {"stocks": stocks, "count": len(stocks), "source": "yahoo_finance_v8"}
+
+@api_router.get("/indian/movers")
+async def indian_market_movers():
+    """Get top gainers, losers, and most active Indian stocks"""
+    data = await get_market_movers()
+    return data
+
+@api_router.get("/indian/quote/{symbol}")
+async def indian_stock_quote(symbol: str):
+    """Get live quote for a single Indian stock"""
+    data = await get_stock_quote(symbol.upper())
+    if 'error' in data:
+        raise HTTPException(status_code=404, detail=data['error'])
+    return data
+
+@api_router.get("/indian/fno-stocks")
+async def indian_fno_stocks():
+    """Get list of all F&O enabled stocks"""
+    from services.option_chain import FNO_STOCKS, FNO_INDICES, LOT_SIZES
+    return {
+        "fno_stocks": FNO_STOCKS,
+        "fno_indices": FNO_INDICES,
+        "lot_sizes": LOT_SIZES,
+        "total_fno": len(FNO_STOCKS) + len(FNO_INDICES),
+    }
+
+@api_router.get("/indian/universe")
+async def indian_stock_universe():
+    """Get the full stock universe with sectors"""
+    from services.stock_analysis import STOCK_UNIVERSE, get_all_sectors
+    stocks = [{"symbol": m['symbol'], "name": m['name'], "sector": m['sector'], "yf_symbol": yf_sym} for yf_sym, m in STOCK_UNIVERSE.items()]
+    return {"stocks": stocks, "sectors": get_all_sectors(), "count": len(stocks), "nifty500_count": len(NIFTY500_TOP)}
+
 # ==================== OPTION CHAIN ====================
 
 from services.option_chain import build_option_chain, get_fno_list, FNO_STOCKS, FNO_INDICES
