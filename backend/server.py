@@ -2827,30 +2827,47 @@ async def indian_fno_stocks():
 
 @api_router.get("/indian/universe")
 async def indian_stock_universe():
-    from services.stock_analysis import STOCK_UNIVERSE, get_all_sectors
-    stocks = [{"symbol": m['symbol'], "name": m['name'], "sector": m['sector'], "yf_symbol": yf_sym} for yf_sym, m in STOCK_UNIVERSE.items()]
-    return {"stocks": stocks, "sectors": get_all_sectors(), "count": len(stocks), "nifty500_count": len(NIFTY500_TOP)}
+    """Get the FULL Indian stock universe (168+ stocks with sectors)"""
+    import json as _json
+    try:
+        with open(Path(__file__).parent / 'data' / 'indian_stocks.json') as f:
+            master = _json.load(f)
+    except:
+        master = {}
+    stocks = [{"symbol": sym, "name": d.get('name', sym), "sector": d.get('sector', ''), "index": d.get('index', [])} for sym, d in master.items()]
+    sectors = sorted(set(d.get('sector', '') for d in master.values() if d.get('sector')))
+    return {"stocks": stocks, "sectors": sectors, "count": len(stocks)}
 
 @api_router.get("/indian/search")
 async def indian_search(q: str = ""):
-    """Search Indian stocks by name or symbol"""
+    """Search ALL Indian stocks (168+ NSE stocks) by name or symbol"""
     q_lower = q.lower().strip()
     if not q_lower:
         return {"results": []}
+    
+    # Load master stock list
+    import json
+    try:
+        with open(Path(__file__).parent / 'data' / 'indian_stocks.json') as f:
+            master = json.load(f)
+    except:
+        master = {}
+    
     results = []
-    for sym in NIFTY500_TOP:
-        if q_lower in sym.lower():
-            results.append({"symbol": sym, "name": sym, "type": "stock"})
-    from services.stock_analysis import STOCK_UNIVERSE
-    for yf_sym, meta in STOCK_UNIVERSE.items():
-        if q_lower in meta['symbol'].lower() or q_lower in meta['name'].lower():
-            if not any(r['symbol'] == meta['symbol'] for r in results):
-                results.append({"symbol": meta['symbol'], "name": meta['name'], "sector": meta.get('sector', ''), "type": "stock"})
+    for sym, data in master.items():
+        if q_lower in sym.lower() or q_lower in data.get('name', '').lower() or q_lower in data.get('sector', '').lower():
+            results.append({
+                "symbol": sym,
+                "name": data.get('name', sym),
+                "sector": data.get('sector', ''),
+                "index": data.get('index', []),
+                "type": "stock",
+            })
     # Add indices
     for idx_name in INDEX_STOCKS.keys():
         if q_lower in idx_name.lower():
             results.append({"symbol": idx_name, "name": idx_name, "type": "index"})
-    return {"results": results[:20]}
+    return {"results": results[:30], "total": len(results)}
 
 @api_router.get("/indian/index/{index_name}/stocks")
 async def indian_index_stocks(index_name: str):
