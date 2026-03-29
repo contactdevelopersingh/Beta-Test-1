@@ -1008,6 +1008,17 @@ STRATEGY_DESCRIPTIONS = {
     "fibonacci": "Fibonacci Retracement: Key levels 23.6%, 38.2%, 50%, 61.8%, 78.6%. Golden pocket entry in trends.",
     "price_action": "Pure Price Action: Candlestick patterns, S/R zones, trendlines, supply/demand zones. No indicators.",
 
+    "elliott_wave": "Elliott Wave Theory: 5-wave impulse for trend, 3-wave ABC for correction. Enter at wave 3 start or wave 4 end.",
+    "wyckoff_logic": "Wyckoff Method: Accumulation/Distribution phases. Spring or Upthrust for entry. High volume node confirmation.",
+    "gann_angles": "Gann Fan & Angles: Geometric price-time analysis. 1x1 line determines trend. Reversal at key fan lines.",
+    "renko_trends": "Renko Bricks: Noise reduction. Trade when brick color changes + MACD confirmation. Ideal for trailing stops.",
+    "harmonic_patterns": "Harmonic Patterns: Gartley, Bat, Butterfly, Crab. High probability reversal zones defined by specific Fib ratios.",
+    "vsa_volume_spread": "VSA (Volume Spread Analysis): Relationship between volume, range, and closing price to detect Smart Money.",
+    "market_profile_tpo": "Market Profile: Time-Price Opportunities. Value Area High/Low fades. Point of Control (POC) mean reversion.",
+    "order_flow_imbalance": "Order Flow & Imbalance: Footprint charts, aggressive buyer/seller delta. Delta divergence at key S/R levels.",
+    "mean_reversion": "Statistical Mean Reversion: Standard deviation channels, VWAP standard error bands. Fade extreme excursions.",
+    "statistical_arbitrage": "Pairs/Statistical Arb: Cointegration of correlated assets. Z-score > 2 fade, Z-score < -2 buy spread.",
+
     # === FOREX-SPECIFIC STRATEGIES ===
     "ict": "ICT (Inner Circle Trader): Institutional order flow, optimal trade entry (OTE), judas swing, market maker model. Focus on time-based liquidity and institutional price delivery.",
     "smc": "Smart Money Concepts: Order Blocks, Fair Value Gaps, BOS, CHoCH. Entry at OB/FVG after BOS confirmation.",
@@ -1055,9 +1066,9 @@ STRATEGY_DESCRIPTIONS = {
 }
 
 # Market-specific strategy grouping
-FOREX_STRATEGIES = ["auto", "ict", "smc", "msnr", "crt", "fvg_ob", "bos", "choch", "liquidity_grab", "inducement", "premium_discount", "kill_zones", "smt_divergence", "breaker_block", "mitigation_block", "supply_demand", "sr_flip", "trendline_liquidity", "eqh_eql", "asian_london", "session_bias", "ema_crossover", "rsi_divergence", "macd", "bollinger", "ichimoku", "fibonacci", "price_action", "vwap"]
-CRYPTO_STRATEGIES = ["auto", "onchain", "whale_tracking", "orderbook", "liquidity_heatmap", "funding_rate", "open_interest", "long_short_ratio", "liquidation_zones", "perp_imbalance", "market_maker", "breakout_fakeout", "range_scalping", "trend_following", "volume_profile", "vwap_bounce", "rsi_divergence", "momentum_scalp", "news_volatility", "altcoin_rotation", "btc_dominance", "ema_crossover", "macd", "bollinger", "ichimoku", "fibonacci", "price_action", "smc", "vwap"]
-INDIAN_STRATEGIES = ["auto", "ema_crossover", "rsi_divergence", "smc", "vwap", "macd", "bollinger", "ichimoku", "fibonacci", "price_action", "supply_demand", "sr_flip", "breakout_fakeout", "volume_profile", "trend_following"]
+FOREX_STRATEGIES = ["auto", "ict", "smc", "msnr", "crt", "fvg_ob", "bos", "choch", "liquidity_grab", "inducement", "premium_discount", "kill_zones", "smt_divergence", "breaker_block", "mitigation_block", "supply_demand", "sr_flip", "trendline_liquidity", "eqh_eql", "asian_london", "session_bias", "ema_crossover", "rsi_divergence", "macd", "bollinger", "ichimoku", "fibonacci", "price_action", "vwap", "elliott_wave", "wyckoff_logic", "gann_angles", "renko_trends", "harmonic_patterns", "vsa_volume_spread", "market_profile_tpo", "order_flow_imbalance", "mean_reversion", "statistical_arbitrage"]
+CRYPTO_STRATEGIES = ["auto", "onchain", "whale_tracking", "orderbook", "liquidity_heatmap", "funding_rate", "open_interest", "long_short_ratio", "liquidation_zones", "perp_imbalance", "market_maker", "breakout_fakeout", "range_scalping", "trend_following", "volume_profile", "vwap_bounce", "rsi_divergence", "momentum_scalp", "news_volatility", "altcoin_rotation", "btc_dominance", "ema_crossover", "macd", "bollinger", "ichimoku", "fibonacci", "price_action", "smc", "vwap", "elliott_wave", "wyckoff_logic", "gann_angles", "renko_trends", "harmonic_patterns", "vsa_volume_spread", "market_profile_tpo", "order_flow_imbalance", "mean_reversion", "statistical_arbitrage"]
+INDIAN_STRATEGIES = ["auto", "ema_crossover", "rsi_divergence", "smc", "vwap", "macd", "bollinger", "ichimoku", "fibonacci", "price_action", "supply_demand", "sr_flip", "breakout_fakeout", "volume_profile", "trend_following", "elliott_wave", "wyckoff_logic", "gann_angles", "renko_trends", "harmonic_patterns", "vsa_volume_spread", "market_profile_tpo", "order_flow_imbalance", "mean_reversion", "statistical_arbitrage"]
 
 ALL_TIMEFRAMES = ["1m", "3m", "5m", "10m", "15m", "30m", "1H", "2H", "3H", "4H", "1D", "3D", "1W"]
 
@@ -1117,6 +1128,19 @@ async def generate_signal(data: SignalRequest, request: Request, user: dict = De
         live_item = next((i for i in _live['indian'] if i['id'] == data.asset_id), None)
         if live_item:
             market_context = f"Current Price: INR {live_item['price']:,.2f}, 24h Change: {live_item['change_24h']:.2f}%, High: {live_item.get('high', 0)}, Low: {live_item.get('low', 0)}, Volume: {live_item.get('volume', 0):,}"
+        elif data.asset_id.startswith("NSE:") or data.asset_id.startswith("BSE:"):
+            # Fetch dynamically using yfinance
+            try:
+                prefix, sym = data.asset_id.split(":", 1)
+                yf_symbol = sym + (".NS" if prefix == "NSE" else ".BO")
+                import yfinance as yf
+                t = yf.Ticker(yf_symbol)
+                info = t.fast_info
+                current_price = info.get('last_price', 0)
+                if current_price:
+                    market_context = f"Current Price: INR {current_price:,.2f}, Volume: {info.get('last_volume', 0):,}"
+            except Exception as e:
+                logger.error(f"Dynamic yfinance fetch failed for {data.asset_id}: {e}")
     if not market_context:
         market_context = f"Asset: {data.asset_name}, Type: {data.asset_type}"
 
