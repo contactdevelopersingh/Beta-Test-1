@@ -1,5 +1,18 @@
 # Titan Trade - Changelog
 
+## Mar 29, 2026 - MASTER TRADING PROMPT Integration (Fork Job 8)
+### Signal Engine Upgrade (60-70% of 150KB+ trading knowledge integrated)
+- 10-step signal generation framework: Market Regime → MTF Analysis → Strategy → Indicators → Candlestick → Market Structure → Confluence → Risk → Scenarios → Quality
+- Market Regime Detection: ADX-based (STRONG_TREND/MODERATE/RANGING/VOLATILE)
+- Complete indicator analysis with actual values: RSI, MACD, EMA alignment, Bollinger state, ADX strength, Volume
+- Candlestick pattern recognition rules (Single/Double/Triple patterns)
+- Market Structure (SMC): BOS, CHoCH, Order Blocks, FVG, Liquidity, Premium/Discount
+- Confluence Scoring: 1 signal=50% → 5+ signals=85%+ probability mapping
+- Scenario Analysis: Bull/Base/Bear cases with probability %
+- Risk Management: Position sizing formula, ATR-based SL, 40/30/30% TP exit strategy
+- New signal fields: market_regime, indicators_used (object), candlestick_pattern, chart_pattern, scenario_bull/base/bear, position_sizing_note
+- Frontend: Indicators panel, scenario cards (green/grey/red), market regime badge, all in expanded signal view
+
 ## Mar 26, 2026 - Indian Stock Analysis Module (Fork Job 7)
 ### Stock Analysis Page (/stock-analysis)
 - Deep fundamental analysis for 40+ Indian stocks (NIFTY 50 components)

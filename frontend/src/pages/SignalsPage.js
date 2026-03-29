@@ -532,6 +532,9 @@ export default function SignalsPage() {
                         )}
                         <Badge variant="outline" className="text-[10px] border-[#6366F1]/30 text-[#6366F1]">Grade: {sig.grade}</Badge>
                         <RiskBadge riskReward={sig.risk_reward} />
+                        {sig.market_regime && (
+                          <Badge variant="outline" className="text-[9px] border-cyan-500/20 text-cyan-400/80">{sig.market_regime?.replace('_', ' ')}</Badge>
+                        )}
                         <Badge variant="outline" className="text-[10px] border-white/15 text-white/45">{sig.market_condition}</Badge>
                         {sig.strategy_used && sig.strategy_used !== 'auto' && (
                           <Badge variant="outline" className="text-[10px] border-amber-500/25 text-amber-400">
@@ -666,12 +669,62 @@ export default function SignalsPage() {
 
                       {isExpanded && (
                         <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-200">
+                          {/* Market Regime */}
+                          {sig.market_regime && (
+                            <div className="flex items-center gap-2 text-[10px]">
+                              <span className="text-white/40">Market Regime:</span>
+                              <Badge variant="outline" className={`text-[9px] ${sig.market_regime?.includes('TREND') ? 'border-emerald-500/30 text-emerald-400' : sig.market_regime === 'RANGING' ? 'border-yellow-500/30 text-yellow-400' : 'border-orange-500/30 text-orange-400'}`}>
+                                {sig.market_regime}
+                              </Badge>
+                            </div>
+                          )}
+
+                          {/* Indicators Used */}
+                          {sig.indicators_used && typeof sig.indicators_used === 'object' && (
+                            <div className="p-2.5 rounded-lg bg-[#6366F1]/[0.03] border border-[#6366F1]/10">
+                              <p className="text-[10px] text-[#6366F1]/70 uppercase tracking-wider font-medium mb-1.5">Indicators</p>
+                              <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-1">
+                                {Object.entries(sig.indicators_used).map(([k, v]) => (
+                                  <div key={k} className="flex items-center justify-between text-[10px]">
+                                    <span className="text-white/40 uppercase">{k}</span>
+                                    <span className="font-data text-white/70 text-[9px]">{v}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
                           {sig.analysis && (
                             <div className="p-2.5 rounded-lg bg-white/[0.02] border border-white/5">
                               <p className="text-[10px] text-white/40 uppercase tracking-wider font-medium mb-1">Analysis</p>
                               <p className="text-xs text-white/50 leading-relaxed">{sig.analysis}</p>
                             </div>
                           )}
+
+                          {/* Scenario Analysis */}
+                          {(sig.scenario_bull || sig.scenario_bear) && (
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                              {sig.scenario_bull && (
+                                <div className="p-2 rounded-lg bg-emerald-500/[0.03] border border-emerald-500/10">
+                                  <p className="text-[9px] text-emerald-400/70 uppercase font-medium mb-0.5">Bull Case</p>
+                                  <p className="text-[10px] text-emerald-400/60">{sig.scenario_bull}</p>
+                                </div>
+                              )}
+                              {sig.scenario_base && (
+                                <div className="p-2 rounded-lg bg-white/[0.02] border border-white/5">
+                                  <p className="text-[9px] text-white/40 uppercase font-medium mb-0.5">Base Case</p>
+                                  <p className="text-[10px] text-white/40">{sig.scenario_base}</p>
+                                </div>
+                              )}
+                              {sig.scenario_bear && (
+                                <div className="p-2 rounded-lg bg-red-500/[0.03] border border-red-500/10">
+                                  <p className="text-[9px] text-red-400/70 uppercase font-medium mb-0.5">Bear Case</p>
+                                  <p className="text-[10px] text-red-400/60">{sig.scenario_bear}</p>
+                                </div>
+                              )}
+                            </div>
+                          )}
+
                           {sig.higher_tf_bias && (
                             <div className="flex items-center gap-2 text-[10px]">
                               <span className="text-white/40">Higher TF Bias:</span>
