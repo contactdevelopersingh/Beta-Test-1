@@ -1174,7 +1174,29 @@ async def generate_signal(data: SignalRequest, request: Request, user: dict = De
     direction_bias = random.choice(["bullish", "bearish", "mixed"])
     confidence_range = random.choice(["low (40-55)", "medium (56-72)", "high (73-88)", "very high (89-98)"])
 
-    system_prompt = f"""You are TITAN AI — World-Class Professional Trading Intelligence System with 25+ years institutional experience across Equity, F&O, Forex, Crypto, Commodities. Timestamp: {datetime.now(timezone.utc).isoformat()}. Seed: {signal_seed}.
+    # Auto-strategy selector context
+    auto_strategy_ctx = ""
+    if strategy == "auto" or (data.strategies and "auto" in data.strategies):
+        auto_strategy_ctx = """
+=== AUTO-STRATEGY SELECTOR ENGINE ===
+Since user selected AUTOMATIC, run this selection logic:
+IF regime == STRONG_TREND AND direction == UP: Use EMA Pullback + MACD Momentum. Avoid: BB Bounce, RSI OB fades.
+IF regime == STRONG_TREND AND direction == DOWN: Use EMA Rejection + MACD Bearish Cross. Avoid: All counter-trend.
+IF regime == RANGING_TIGHT: Use Bollinger Bounce + RSI Extremes + Stochastic. Avoid: All breakout strategies.
+IF regime == BREAKOUT_IMMINENT: Use BB Squeeze + Volume Breakout + Donchian. Place both buy AND sell pending.
+IF regime == HIGH_VOLATILITY: Use VWAP + Structure-Based. Reduce all position sizes by 40%.
+Score each combination 1-100: Regime fit(30pts) + Confluence(25pts) + Historical reliability(20pts) + TF alignment(15pts) + Volume confirmation(10pts).
+Pick highest-scoring combination. Show user WHICH strategy was auto-selected and WHY."""
+
+    system_prompt = f"""You are TITAN AI — World-Class Professional Trading Intelligence System (v3.0) with 25+ years institutional experience across Equity, F&O, Forex, Crypto, Commodities. Timestamp: {datetime.now(timezone.utc).isoformat()}. Seed: {signal_seed}.
+
+TITAN FUNDAMENTAL LAWS:
+1. Real indicator logic with actual mathematical formulas, not simulation.
+2. Automatic SL, TP1, TP2, TP3 calculation using ATR + structural levels.
+3. Auto Risk:Reward computation (manual override: {rr_instruction}).
+4. Multi-timeframe alignment check MANDATORY.
+5. Signal strength score (1-10), confluence count, confidence percentage in EVERY output.
+6. Professional tone. Every output must be actionable — entry, exit, size, rationale, risk defined.
 
 === STEP 1: MARKET REGIME DETECTION (MANDATORY) ===
 Before generating any signal, FIRST determine:
@@ -1239,16 +1261,35 @@ Score EACH: Indicator alignment ✓, Price action pattern ✓, S/R level ✓, Vo
 
 === STEP 8: RISK MANAGEMENT (NON-NEGOTIABLE) ===
 POSITION SIZING: Risk = Account × 2%. Position = Risk / (Entry - SL). NEVER risk >2% per trade.
-STOP LOSS: {rr_instruction}
-- SL MUST be beyond logical structure (swing H/L, OB edge, ATR-based)
-- NEVER place SL at obvious round numbers (stop hunts)
-- ATR-based: SL = Entry ± (1.5 × ATR) for normal, ± (2 × ATR) for volatile
-TAKE PROFIT:
-- TP1: Nearest S/R or 1:1 R:R (exit 40% position)
-- TP2: Fibonacci extension 1.272 or measured move (exit 30% position)
-- TP3: Major S/R, Fib 1.618, or trend target (exit remaining 30%)
-- After TP1 hit: Move SL to breakeven on remaining position
+
+ATR-BASED SL ENGINE (TITAN DEFAULT):
+ATR_14 = Average True Range, 14 periods. TR = MAX(High-Low, |High-PrevClose|, |Low-PrevClose|)
+For LONG: SL_Normal = Entry - (1.5 × ATR). SL_Wide = Entry - (2.0 × ATR). SL_Structural = Below swing low.
+TITAN uses: MAX(SL_Normal, SL_Structural) = whichever is MORE protective.
+For SHORT: Mirror above but ADD instead of subtract.
+
+ATR-BASED TP ENGINE:
+TP1 = Entry + (1.5 × |Entry - SL|) = 1.5R. Exit 40% position.
+TP2 = Entry + (2.5 × |Entry - SL|) = 2.5R. Exit 30% position.
+TP3 = Entry + (4.0 × |Entry - SL|) = 4R. Trail remaining 30%.
+Alternative: TP1 = Previous swing high. TP2 = Fib ext 127.2%. TP3 = Fib ext 161.8%.
+TITAN picks LOWER of (R-multiple, Structural) for TP1 (conservative), HIGHER for TP3 (optimistic).
+
+After TP1 hit → Move SL to breakeven. After TP2 hit → Trail with 2× ATR trailing stop.
+{rr_instruction}
+
+PORTFOLIO HEAT MANAGEMENT:
+Max per-trade risk: 2%. Max portfolio heat: 6%. Max 3 correlated positions.
+Daily loss limit: 3% → stop. Weekly: 6% → reduce size. Monthly: 10% → system review.
+
+DYNAMIC SIZING (Anti-Martingale):
+After 3 consecutive wins: risk_multiplier = 1.25 (increase slightly)
+After 1 loss: 0.9x. After 2 losses: 0.75x. After 3 losses: 0.5x and STOP TRADING.
+
 HOLDING: {profit_target_str}
+KILL ZONES (Forex): London (2-5AM EST), NY (7-10AM EST) = highest probability.
+
+{auto_strategy_ctx}
 
 === STEP 9: SCENARIO ANALYSIS ===
 For every signal, provide 3 scenarios:
@@ -1264,7 +1305,7 @@ For every signal, provide 3 scenarios:
 - KILL ZONES (Forex): London (2-5AM EST), New York (7-10AM EST) = highest probability
 
 === OUTPUT FORMAT (JSON ONLY, no markdown) ===
-{{"direction":"BUY/SELL","confidence":40-98,"grade":"A+/A/B+/B/C","entry_price":number,"take_profit_1":number,"take_profit_2":number,"take_profit_3":number,"stop_loss":number,"risk_reward":"1:X.X","risk_level":"LOW/MEDIUM/HIGH","market_regime":"STRONG_TREND/MODERATE_TREND/RANGING/VOLATILE","timeframes_analyzed":["{timeframes_str.replace(', ','","')}"],"primary_timeframe":"TF","strategy_used":"{strategy}","holding_duration":"duration","confluence_score":3-6,"confluence_factors":["factor1","factor2","factor3","factor4"],"indicators_used":{{"rsi":"XX (state)","macd":"signal/histogram state","ema":"9/21/55 alignment","bollinger":"squeeze/normal/expansion","adx":"XX (trend strength)","volume":"above/below avg"}},"candlestick_pattern":"pattern name or none","chart_pattern":"pattern name or none","technical_summary":"Complete indicator summary with values","analysis":"4-5 sentence DEEP analysis referencing specific indicators, patterns, and multi-TF alignment","trade_logic":"3-4 sentences explaining the institutional WHY behind this setup","trade_reason":"Exact triggers: RSI divergence on 4H + OB retest on 1H + Bullish engulfing + Volume spike","key_levels":["level1","level2","level3"],"market_condition":"Trending/Ranging/Breakout/Reversal","higher_tf_bias":"Bullish/Bearish/Neutral with specific reason","invalidation":"Exact price level that invalidates this trade and WHY","scenario_bull":"Bull case: probability% - what happens if works","scenario_base":"Base case: probability% - most likely outcome","scenario_bear":"Bear case: probability% - what if fails","session_note":"Best session timing","position_sizing_note":"Risk 2% capital, SL distance X, adjust size accordingly"}}"""
+{{"direction":"BUY/SELL","confidence":40-98,"grade":"A+/A/B+/B/C","signal_strength":1-10,"entry_price":number,"entry_type":"Market/Limit/Stop","take_profit_1":number,"take_profit_2":number,"take_profit_3":number,"stop_loss":number,"sl_atr_multiple":"1.5x/2.0x ATR","risk_reward":"1:X.X","risk_level":"LOW/MEDIUM/HIGH","market_regime":"STRONG_TREND/MODERATE_TREND/RANGING/VOLATILE/BREAKOUT_IMMINENT","trend_strength":"X/10","volatility_state":"HIGH/NORMAL/LOW","timeframes_analyzed":["{timeframes_str.replace(', ','","')}"],"primary_timeframe":"TF","strategy_used":"{strategy}","strategy_auto_selected":"strategy name if auto","holding_duration":"duration","confluence_score":3-6,"confluence_check":{{"higher_tf_trend":true/false,"momentum_confirm":true/false,"volume_confirm":true/false,"price_structure":true/false,"volatility_suitable":true/false,"entry_timing":true/false}},"confluence_factors":["factor1","factor2","factor3","factor4"],"indicators_used":{{"rsi":"XX (state)","macd":"signal state","ema":"alignment","bollinger":"state","adx":"XX (strength)","volume":"ratio vs avg","atr":"value","supertrend":"green/red"}},"candlestick_pattern":"pattern or none","chart_pattern":"pattern or none","technical_summary":"Complete summary","analysis":"4-5 sentence DEEP analysis","trade_logic":"3-4 sentences institutional WHY","trade_reason":"Exact triggers","key_levels":["level1","level2","level3"],"market_condition":"Trending/Ranging/Breakout/Reversal","higher_tf_bias":"direction + reason","invalidation":"price level + WHY","invalidation_time":"X hours/candles","scenario_bull":"Bull: probability% - outcome","scenario_base":"Base: probability% - outcome","scenario_bear":"Bear: probability% - outcome","session_note":"timing","position_sizing_note":"2% risk, SL distance, size","trade_management":"TP1=exit 40%, move SL to BE. TP2=exit 30%, trail 2xATR. TP3=trail remaining"}}}}"""
 
     chat = LlmChat(
         api_key=EMERGENT_LLM_KEY,
@@ -1416,15 +1457,35 @@ async def beast_chat(data: ChatMessage, request: Request, user: dict = Depends(g
     chat = LlmChat(
         api_key=EMERGENT_LLM_KEY,
         session_id=session_id,
-        system_message=f"""You are Titan AI, the elite trading intelligence assistant for Titan Trade. You are an expert in:
-- Cryptocurrency markets, DeFi, and on-chain analysis
-- Forex trading and currency analysis
-- Indian stock markets (NSE/BSE), NIFTY, SENSEX
-- Technical analysis (RSI, MACD, Bollinger Bands, Ichimoku, Fibonacci)
-- Smart Money Concepts (Order Blocks, FVG, BOS, CHoCH, Liquidity sweeps)
-- Market sentiment and macro analysis
-Provide concise, actionable trading insights. Be direct and professional.
-Always include: "This is not financial advice. Always do your own research."
+        system_message=f"""You are TITAN AI (v3.0) — World-Class Professional Trading Intelligence System and Coach with 25+ years experience in Equity, F&O, Forex, Crypto, Commodities, and Index Trading.
+
+=== TITAN RESPONSE MODES ===
+MODE 1 (Quick Read): If user asks casual market question → Give regime, bias, key levels, 5-8 lines.
+MODE 2 (Full Setup): If user asks for entry/analysis → Give full analysis with entry/SL/TP/R:R/confluence.
+MODE 3 (Education): If user asks concepts → Explain with formula, rules, example, when it doesn't work.
+MODE 4 (Portfolio): If user gives holdings → Assess each, calculate heat, flag correlations, suggest hedges.
+MODE 5 (Auto Signal): If user says "suggest trade" → Run auto-strategy selector, give full blueprint.
+
+=== YOUR EXPERTISE ===
+- ALL Technical Indicators: SMA/EMA/RSI/MACD/BB/Ichimoku/Supertrend/ATR/VWAP/Stochastic/ADX/CCI/OBV/MFI
+- Candlestick Patterns: Doji, Hammer, Engulfing, Morning/Evening Star, Marubozu, Harami, etc.
+- Chart Patterns: H&S, Double Top/Bottom, Flags, Triangles, Wedges, Cup & Handle, Harmonics
+- Market Structure: SMC (BOS, CHoCH, Order Blocks, FVG, Liquidity, Premium/Discount)
+- Advanced: Wyckoff Method, Elliott Wave, Volume Profile, Market Breadth, Intermarket Analysis
+- Crypto: On-Chain (SOPR, MVRV, Exchange Flows), Funding Rate, OI, Liquidation Zones
+- Forex: Kill Zones, Session Analysis, Carry Trade, DXY correlation
+- Indian Markets: NSE/BSE, F&O Expiry strategies, FII/DII flows, Nifty/BankNifty
+- Risk Management: Position sizing (2% rule), ATR-based SL, Kelly Criterion, Portfolio Heat
+- Options: Greeks (Delta/Gamma/Theta/Vega), Iron Condor, Straddle, Calendar, Butterflies
+
+=== CORE RULES ===
+1. ALWAYS provide specific Entry, Stop Loss, Target levels for trade discussions
+2. ALWAYS calculate Risk:Reward ratio
+3. Use Multi-Timeframe analysis (Higher TF = trend, Middle = setup, Lower = entry)
+4. Confluence-based decisions (3+ signals = high probability)
+5. Risk Management FIRST — never skip position sizing
+6. Be direct, professional, and actionable
+7. End with: "⚠️ This is not financial advice. Always do your own research."
 {f"Recent conversation context:{history_text}" if history_text else ""}"""
     )
     await db.chat_history.insert_one({
@@ -2569,6 +2630,108 @@ async def execute_signal_as_trade(signal_id: str, units: int = 1000, user: dict 
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Trade execution failed: {str(e)}")
+
+# ==================== TITAN TRADING SYSTEMS ====================
+
+@api_router.get("/signals/systems")
+async def get_trading_systems():
+    """Return TITAN pre-built trading systems"""
+    return {"systems": [
+        {
+            "id": "triple_alpha",
+            "name": "TITAN Triple Alpha",
+            "description": "Only trades when 3 independent systems agree: Price Action + Momentum + Trend. Daily chart swing trading.",
+            "expected_win_rate": "62-68%",
+            "expected_rr": "1:2.5",
+            "max_drawdown": "12-18%",
+            "rules": {
+                "system_a": "Price Action: Morning Star, Bullish Engulfing, or Pin Bar at key level",
+                "system_b": "Momentum: RSI crossed above 50 AND MACD bullish cross",
+                "system_c": "Trend: Price above EMA(21) > EMA(55) AND Supertrend green",
+                "entry": "All 3 systems BUY simultaneously. Volume > 20-day avg. Next day market open.",
+                "sizing": "1.5% risk per trade. Max 12% portfolio per trade. Max 4 positions.",
+                "exit": "SL: 2x ATR. TP1: 1.5R at 40%. TP2: 2.5R at 40%. Trail remainder 2x ATR."
+            }
+        },
+        {
+            "id": "momentum_rider",
+            "name": "TITAN Momentum Rider",
+            "description": "Weekly momentum rebalance system for Nifty 500 stocks. Buy strong stocks, dump weak ones.",
+            "expected_return": "18-25% CAGR",
+            "rebalance": "Weekly (Monday)",
+            "rules": {
+                "selection": "RSI(14) weekly > 60, Price > EMA(50) > EMA(200), 13-week top 25% performance",
+                "entry": "Monday morning if stock above Friday high",
+                "sizing": "Equal weight 5% per position. Max 20 positions. Max 3 per sector.",
+                "exit": "Weekly close below EMA(50), RSI drops below 50, underperforms Nifty 5% in 2 weeks, or -8% hard stop"
+            }
+        },
+        {
+            "id": "volatility_harvester",
+            "name": "TITAN Volatility Harvester",
+            "description": "Sell premium in high-IV environments using weekly iron condors. Collect theta decay.",
+            "expected_win_rate": "65-72%",
+            "style": "Weekly iron condors / strangles",
+            "rules": {
+                "selection": "Nifty/BankNifty weekly options only. India VIX > 18. No major events. ADX < 30.",
+                "setup": "Place strikes OUTSIDE 1 standard deviation weekly range. Credit target: 1/3 of spread width.",
+                "management": "If short strike within 50pts → Roll. If crossed → Take loss. Profit target: 50% credit → EXIT.",
+                "entry": "Monday morning. Exit by Wednesday or 50% profit."
+            }
+        }
+    ]}
+
+# ==================== PORTFOLIO HEAT ====================
+
+@api_router.get("/portfolio/heat")
+async def get_portfolio_heat(user: dict = Depends(get_current_user)):
+    """Calculate portfolio heat — total risk across all open positions"""
+    signals = await db.signals.find({"user_id": user['user_id'], "status": "active"}, {"_id": 0}).to_list(100)
+    trades = await db.trade_executions.find({"user_id": user['user_id'], "status": "filled"}, {"_id": 0}).to_list(100)
+    
+    total_risk_pct = 0
+    positions = []
+    correlated_groups = {}
+    
+    for sig in signals:
+        entry = sig.get('entry_price', 0)
+        sl = sig.get('stop_loss', 0)
+        if entry and sl:
+            risk_pct = abs(entry - sl) / entry * 100
+            total_risk_pct += min(risk_pct, 2)  # Cap at 2% per signal
+            asset_type = sig.get('asset_type', 'unknown')
+            correlated_groups.setdefault(asset_type, []).append(sig.get('asset_name', ''))
+            positions.append({
+                "asset": sig.get('asset_name', ''),
+                "direction": sig.get('direction', ''),
+                "risk_pct": round(risk_pct, 2),
+                "type": asset_type,
+            })
+    
+    correlation_warnings = []
+    for group, assets in correlated_groups.items():
+        if len(assets) > 3:
+            correlation_warnings.append(f"Too many correlated {group} positions ({len(assets)}). Max recommended: 3.")
+    
+    heat_status = "SAFE" if total_risk_pct < 4 else "MODERATE" if total_risk_pct < 6 else "HIGH" if total_risk_pct < 8 else "CRITICAL"
+    
+    return {
+        "total_heat_pct": round(total_risk_pct, 2),
+        "max_heat_pct": 6,
+        "heat_status": heat_status,
+        "active_positions": len(positions),
+        "max_positions": 5,
+        "positions": positions,
+        "correlation_warnings": correlation_warnings,
+        "rules": {
+            "max_per_trade": "2%",
+            "max_portfolio_heat": "6%",
+            "max_correlated": 3,
+            "daily_loss_limit": "3%",
+            "weekly_loss_limit": "6%",
+            "monthly_loss_limit": "10%",
+        }
+    }
 
 # ==================== STOCK ANALYSIS ====================
 
