@@ -25,18 +25,29 @@ export default function StockAnalysisPage() {
   const [peers, setPeers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [stockList, setStockList] = useState([]);
+  const [searchResults, setSearchResults] = useState([]);
+  const [searching, setSearching] = useState(false);
   const [showSearch, setShowSearch] = useState(!symbol);
   const [tab, setTab] = useState('overview');
-
-  useEffect(() => {
-    api.get('/stocks/list').then(r => setStockList(r.data.stocks || [])).catch(() => {});
-  }, [api]);
 
   useEffect(() => {
     if (symbol) { fetchAnalysis(symbol); setShowSearch(false); }
     else { setLoading(false); setShowSearch(true); }
   }, [symbol]);
+
+  // Live search across all 6689 stocks
+  useEffect(() => {
+    if (!searchQuery || searchQuery.length < 1) { setSearchResults([]); return; }
+    const timer = setTimeout(async () => {
+      setSearching(true);
+      try {
+        const res = await api.get(`/indian/search?q=${encodeURIComponent(searchQuery)}`);
+        setSearchResults(res.data.results || []);
+      } catch (e) { setSearchResults([]); }
+      setSearching(false);
+    }, 200);
+    return () => clearTimeout(timer);
+  }, [searchQuery, api]);
 
   const fetchAnalysis = async (sym) => {
     setLoading(true);
@@ -53,11 +64,6 @@ export default function StockAnalysisPage() {
     setLoading(false);
   };
 
-  const filtered = stockList.filter(s =>
-    s.symbol.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    s.name.toLowerCase().includes(searchQuery.toLowerCase())
-  ).slice(0, 15);
-
   const f = data?.fundamentals || {};
   const tabs = ['overview', 'financials', 'quarterly', 'balance_sheet', 'cash_flow', 'shareholding', 'peers'];
 
@@ -65,31 +71,41 @@ export default function StockAnalysisPage() {
     return (
       <div className="space-y-6 page-enter" data-testid="stock-search-page">
         <h1 className="text-2xl font-bold text-white">Stock Analysis</h1>
-        <p className="text-sm text-white/40">Search any Indian stock for deep fundamental analysis</p>
+        <p className="text-sm text-white/40">Search any of 6,689 Indian stocks (NSE + BSE) for deep fundamental analysis</p>
         <div className="relative max-w-xl">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
           <Input
-            placeholder="Search by symbol or company name (e.g. RELIANCE, TCS)..."
+            placeholder="Search by symbol or company name (e.g. RELIANCE, TCS, Infosys, Bank...)..."
             value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
             className="pl-10 bg-white/[0.03] border-white/10 text-white" autoFocus
             data-testid="stock-search-input"
           />
+          {searching && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#6366F1] animate-spin" />}
         </div>
-        {searchQuery && (
-          <div className="space-y-1 max-w-xl">
-            {filtered.map(s => (
+        {searchQuery && searchResults.length > 0 && (
+          <div className="space-y-1 max-w-xl" data-testid="search-results">
+            <p className="text-[10px] text-white/30 mb-1">{searchResults.length} results for "{searchQuery}"</p>
+            {searchResults.map(s => (
               <button key={s.symbol} onClick={() => navigate(`/stock-analysis/${s.symbol.toLowerCase()}`)}
-                className="w-full flex items-center justify-between p-3 rounded-lg bg-white/[0.02] border border-white/5 hover:bg-white/[0.05] transition-all text-left"
+                className="w-full flex items-center justify-between p-3 rounded-lg bg-white/[0.02] border border-white/5 hover:bg-white/[0.05] hover:border-white/10 transition-all text-left stagger-item"
                 data-testid={`stock-${s.symbol}`}
               >
                 <div>
                   <span className="text-sm font-medium text-white">{s.symbol}</span>
                   <span className="text-xs text-white/40 ml-2">{s.name}</span>
                 </div>
-                <Badge variant="outline" className="text-[9px] border-white/10 text-white/30">{s.sector}</Badge>
+                <div className="flex items-center gap-1.5">
+                  {s.index?.length > 0 && s.index.map(idx => (
+                    <Badge key={idx} variant="outline" className="text-[8px] border-[#6366F1]/20 text-[#6366F1]/70">{idx}</Badge>
+                  ))}
+                  <Badge variant="outline" className="text-[9px] border-white/10 text-white/30">{s.sector || 'NSE'}</Badge>
+                </div>
               </button>
             ))}
           </div>
+        )}
+        {searchQuery && searchResults.length === 0 && !searching && (
+          <p className="text-sm text-white/30 max-w-xl">No stocks found for "{searchQuery}"</p>
         )}
       </div>
     );
