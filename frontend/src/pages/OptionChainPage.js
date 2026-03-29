@@ -14,6 +14,8 @@ export default function OptionChainPage() {
   const [loading, setLoading] = useState(true);
   const [expiryIdx, setExpiryIdx] = useState(0);
 
+  const [searchOC, setSearchOC] = useState('');
+
   useEffect(() => { api.get('/options/fno-list').then(r => setFnoList(r.data)).catch(() => {}); }, [api]);
   useEffect(() => { fetchChain(); }, [symbol, expiryIdx]);
 
@@ -25,6 +27,9 @@ export default function OptionChainPage() {
     } catch (e) { toast.error(`Failed to load option chain for ${symbol}`); }
     setLoading(false);
   };
+
+  const allFnoItems = [...(fnoList.indices || []), ...(fnoList.stocks || [])];
+  const filteredFno = searchOC ? allFnoItems.filter(s => s.toLowerCase().includes(searchOC.toLowerCase())) : allFnoItems;
 
   const d = chain;
   const allData = d?.data || [];
@@ -38,17 +43,36 @@ export default function OptionChainPage() {
           <p className="text-sm text-white/40">Indian Market F&O — Black-Scholes Estimated</p>
         </div>
         <div className="flex gap-2">
-          <Select value={symbol} onValueChange={s => { setSymbol(s); setExpiryIdx(0); }}>
-            <SelectTrigger className="w-[180px] bg-white/[0.03] border-white/10 text-white" data-testid="oc-symbol-select">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent className="max-h-[300px]">
-              <SelectItem value="__indices" disabled className="text-[#6366F1] text-xs font-bold">— INDICES —</SelectItem>
-              {fnoList.indices?.map(i => <SelectItem key={i} value={i}>{i}</SelectItem>)}
-              <SelectItem value="__stocks" disabled className="text-[#6366F1] text-xs font-bold">— F&O STOCKS —</SelectItem>
-              {fnoList.stocks?.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-            </SelectContent>
-          </Select>
+          <div className="relative">
+            <Input
+              placeholder="Search F&O stock..."
+              value={searchOC}
+              onChange={e => setSearchOC(e.target.value)}
+              className="w-[180px] bg-white/[0.03] border-white/10 text-white text-sm"
+              data-testid="oc-search-input"
+              list="fno-list-datalist"
+              onKeyDown={e => {
+                if (e.key === 'Enter' && filteredFno.length > 0) {
+                  setSymbol(filteredFno[0]);
+                  setSearchOC('');
+                  setExpiryIdx(0);
+                }
+              }}
+            />
+            <datalist id="fno-list-datalist">
+              {filteredFno.map(s => <option key={s} value={s} />)}
+            </datalist>
+            {searchOC && filteredFno.length > 0 && (
+              <div className="absolute top-full left-0 mt-1 w-full bg-[#0A0A0F] border border-white/10 rounded-lg max-h-[200px] overflow-y-auto z-50">
+                {filteredFno.slice(0, 10).map(s => (
+                  <button key={s} onClick={() => { setSymbol(s); setSearchOC(''); setExpiryIdx(0); }}
+                    className="w-full text-left px-3 py-1.5 text-xs text-white hover:bg-white/5">
+                    {s}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
           {d?.expiryDates && (
             <Select value={String(expiryIdx)} onValueChange={v => setExpiryIdx(parseInt(v))}>
               <SelectTrigger className="w-[150px] bg-white/[0.03] border-white/10 text-white">
@@ -66,7 +90,7 @@ export default function OptionChainPage() {
       {d && (
         <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-2 stagger-item">
           {[
-            { l: 'Spot Price', v: d.underlyingValue?.toLocaleString(), c: 'text-white' },
+            { l: 'Spot Price', v: `₹${d.underlyingValue?.toLocaleString()}`, c: 'text-white' },
             { l: 'PCR', v: `${d.pcr} (${d.pcrLabel})`, c: d.pcr > 1.2 ? 'text-emerald-400' : d.pcr < 0.8 ? 'text-red-400' : 'text-yellow-400' },
             { l: 'Max Pain', v: d.maxPainStrike?.toLocaleString() },
             { l: 'IV', v: `${d.iv}%` },

@@ -37,11 +37,21 @@ const INDIAN_ASSETS = [
   { id: 'reliance', name: 'Reliance Industries' }, { id: 'tcs', name: 'TCS' },
   { id: 'infy', name: 'Infosys' }, { id: 'hdfcbank', name: 'HDFC Bank' },
   { id: 'sbin', name: 'State Bank of India' }, { id: 'icicibank', name: 'ICICI Bank' },
-  { id: 'bhartiartl', name: 'Bharti Airtel' },
+  { id: 'bhartiartl', name: 'Bharti Airtel' }, { id: 'wipro', name: 'Wipro' },
   { id: 'bajfinance', name: 'Bajaj Finance' }, { id: 'adanient', name: 'Adani Enterprises' },
+  { id: 'tatamotors', name: 'Tata Motors' }, { id: 'maruti', name: 'Maruti Suzuki' },
+  { id: 'sunpharma', name: 'Sun Pharma' }, { id: 'lt', name: 'Larsen & Toubro' },
+  { id: 'titan', name: 'Titan Company' }, { id: 'axisbank', name: 'Axis Bank' },
+  { id: 'kotakbank', name: 'Kotak Bank' }, { id: 'hcltech', name: 'HCL Tech' },
+  { id: 'ntpc', name: 'NTPC' }, { id: 'ongc', name: 'ONGC' },
+  { id: 'coalindia', name: 'Coal India' }, { id: 'jswsteel', name: 'JSW Steel' },
+  { id: 'tatasteel', name: 'Tata Steel' }, { id: 'nestleind', name: 'Nestle India' },
+  { id: 'drreddy', name: "Dr Reddy's" }, { id: 'cipla', name: 'Cipla' },
+  { id: 'hindunilvr', name: 'Hindustan Unilever' }, { id: 'asianpaint', name: 'Asian Paints' },
+  { id: 'powergrid', name: 'Power Grid' }, { id: 'ultracemco', name: 'UltraTech Cement' },
 ];
 
-const ALL_TIMEFRAMES = ['1m', '3m', '5m', '10m', '15m', '30m', '1H', '2H', '3H', '4H', '1D', '3D', '1W'];
+const ALL_TIMEFRAMES = ['1m', '3m', '5m', '10m', '15m', '30m', '1H', '2H', '3H', '4H', '1D', '3D', '1W', '1M', '3M', '6M', '12M'];
 
 const ConfidenceRing = ({ value }) => {
   const r = 28, c = 2 * Math.PI * r;
@@ -277,15 +287,35 @@ export default function SignalsPage() {
               </Select>
             </div>
             <div>
-              <label className="text-xs text-white/40 mb-1.5 block">Asset</label>
-              <Select value={assetId} onValueChange={setAssetId}>
-                <SelectTrigger className="w-[200px] bg-black/50 border-white/10 text-white text-sm" data-testid="asset-select">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-[#09090B] border-white/10 max-h-[300px]">
-                  {assets.map(a => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <label className="text-xs text-white/40 mb-1.5 block">Asset {assetType === 'indian' ? '(Search)' : ''}</label>
+              {assetType === 'indian' ? (
+                <div className="relative">
+                  <Input
+                    placeholder="Search stock..."
+                    value={assetId ? assets.find(a => a.id === assetId)?.name || assetId : ''}
+                    onChange={e => {
+                      const q = e.target.value.toLowerCase();
+                      const match = assets.find(a => a.name.toLowerCase().includes(q) || a.id.includes(q));
+                      if (match) setAssetId(match.id);
+                    }}
+                    className="w-[200px] bg-black/50 border-white/10 text-white text-sm"
+                    data-testid="asset-search-input"
+                    list="indian-assets-list"
+                  />
+                  <datalist id="indian-assets-list">
+                    {assets.map(a => <option key={a.id} value={a.name} />)}
+                  </datalist>
+                </div>
+              ) : (
+                <Select value={assetId} onValueChange={setAssetId}>
+                  <SelectTrigger className="w-[200px] bg-black/50 border-white/10 text-white text-sm" data-testid="asset-select">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-[#09090B] border-white/10 max-h-[300px]">
+                    {assets.map(a => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
             <div>
               <label className="text-xs text-white/40 mb-1.5 block">Strategy</label>
@@ -371,6 +401,7 @@ export default function SignalsPage() {
                   { id: 'day_trading', label: 'Day' },
                   { id: 'swing', label: 'Swing' },
                   { id: 'position', label: 'Position' },
+                  { id: 'investing', label: 'Investing' },
                 ].map(m => (
                   <button key={m.id} onClick={() => setTradingMode(m.id)}
                     className={`px-3 py-1.5 rounded-md text-[10px] font-medium border transition-all ${

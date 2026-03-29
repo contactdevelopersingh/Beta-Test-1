@@ -317,6 +317,7 @@ TRADING_MODES = {
     "day_trading": {"label": "Day Trading", "desc": "Intraday trades, no overnight holds. Moderate SL/TP.", "default_hold": "1-8 hours"},
     "swing": {"label": "Swing Trading", "desc": "Multi-day trades riding momentum swings. Wider SL/TP.", "default_hold": "1-7 days"},
     "position": {"label": "Position Trading", "desc": "Long-term macro trades. Widest SL/TP, trend following.", "default_hold": "1-4 weeks"},
+    "investing": {"label": "Investing", "desc": "Long-term investment based on fundamentals + technicals. Very wide SL/TP, focus on value and growth.", "default_hold": "1-12 months"},
 }
 
 class AlertCreate(BaseModel):
@@ -2785,21 +2786,35 @@ async def get_portfolio_heat(user: dict = Depends(get_current_user)):
 
 from services.indian_market import get_all_nifty_stocks, get_market_movers, get_stock_quote, NIFTY500_TOP
 
+# Index → Stocks mapping
+INDEX_STOCKS = {
+    "NIFTY50": ["RELIANCE","TCS","INFY","HDFCBANK","ICICIBANK","SBIN","BHARTIARTL","ITC","WIPRO","HINDUNILVR","BAJFINANCE","HCLTECH","MARUTI","ADANIENT","AXISBANK","KOTAKBANK","LT","TITAN","SUNPHARMA","ULTRACEMCO","TECHM","ASIANPAINT","M&M","POWERGRID","NTPC","ONGC","COALINDIA","JSWSTEEL","TATASTEEL","TATAMOTORS","BAJAJFINSV","NESTLEIND","DRREDDY","CIPLA","DIVISLAB","HEROMOTOCO","EICHERMOT","BRITANNIA","GRASIM","HINDALCO","BPCL","TATACONSUM","APOLLOHOSP","SBILIFE","HDFCLIFE"],
+    "BANKNIFTY": ["HDFCBANK","ICICIBANK","SBIN","AXISBANK","KOTAKBANK","INDUSINDBK","BANDHANBNK","FEDERALBNK","PNB","BANKBARODA","IDFCFIRSTB","RBLBANK"],
+    "NIFTYIT": ["TCS","INFY","WIPRO","HCLTECH","TECHM","LTIM","MPHASIS","PERSISTENT","COFORGE"],
+    "NIFTYPHARMA": ["SUNPHARMA","DRREDDY","CIPLA","DIVISLAB","AUROPHARMA","LUPIN","BIOCON","TORNTPHARM"],
+    "NIFTYAUTO": ["MARUTI","TATAMOTORS","M&M","HEROMOTOCO","EICHERMOT","BAJAJFINSV"],
+    "NIFTYFMCG": ["HINDUNILVR","ITC","NESTLEIND","BRITANNIA","DABUR","GODREJCP","TATACONSUM"],
+    "NIFTYMETAL": ["JSWSTEEL","TATASTEEL","HINDALCO","VEDL","SAIL","NMDC","COALINDIA"],
+    "NIFTYENERGY": ["RELIANCE","ONGC","BPCL","IOC","HPCL","GAIL","NTPC","POWERGRID","ADANIGREEN","NHPC"],
+    "NIFTYREALTY": ["ADANIENT","ADANIPORTS"],
+    "NIFTYINFRA": ["LT","ADANIENT","ADANIPORTS","POWERGRID","NTPC","CONCOR","BEL","HAL","BHEL"],
+    "NIFTYPSUBANK": ["SBIN","PNB","BANKBARODA","CANBK","UNIONBANK","IOB"],
+    "SENSEX": ["RELIANCE","TCS","INFY","HDFCBANK","ICICIBANK","SBIN","BHARTIARTL","ITC","WIPRO","HINDUNILVR","BAJFINANCE","HCLTECH","MARUTI","LT","TITAN","SUNPHARMA","ULTRACEMCO","AXISBANK","KOTAKBANK","TATAMOTORS","NESTLEIND","ASIANPAINT","M&M","POWERGRID","NTPC","TATASTEEL","BAJAJFINSV","TECHM","ADANIENT","JSWSTEEL"],
+    "INDIAVIX": [],
+}
+
 @api_router.get("/indian/stocks")
 async def indian_all_stocks():
-    """Get all major Indian stocks (NIFTY 500 top) with live prices"""
     stocks = await get_all_nifty_stocks()
     return {"stocks": stocks, "count": len(stocks), "source": "yahoo_finance_v8"}
 
 @api_router.get("/indian/movers")
 async def indian_market_movers():
-    """Get top gainers, losers, and most active Indian stocks"""
     data = await get_market_movers()
     return data
 
 @api_router.get("/indian/quote/{symbol}")
 async def indian_stock_quote(symbol: str):
-    """Get live quote for a single Indian stock"""
     data = await get_stock_quote(symbol.upper())
     if 'error' in data:
         raise HTTPException(status_code=404, detail=data['error'])
@@ -2807,21 +2822,49 @@ async def indian_stock_quote(symbol: str):
 
 @api_router.get("/indian/fno-stocks")
 async def indian_fno_stocks():
-    """Get list of all F&O enabled stocks"""
     from services.option_chain import FNO_STOCKS, FNO_INDICES, LOT_SIZES
-    return {
-        "fno_stocks": FNO_STOCKS,
-        "fno_indices": FNO_INDICES,
-        "lot_sizes": LOT_SIZES,
-        "total_fno": len(FNO_STOCKS) + len(FNO_INDICES),
-    }
+    return {"fno_stocks": FNO_STOCKS, "fno_indices": FNO_INDICES, "lot_sizes": LOT_SIZES, "total_fno": len(FNO_STOCKS) + len(FNO_INDICES)}
 
 @api_router.get("/indian/universe")
 async def indian_stock_universe():
-    """Get the full stock universe with sectors"""
     from services.stock_analysis import STOCK_UNIVERSE, get_all_sectors
     stocks = [{"symbol": m['symbol'], "name": m['name'], "sector": m['sector'], "yf_symbol": yf_sym} for yf_sym, m in STOCK_UNIVERSE.items()]
     return {"stocks": stocks, "sectors": get_all_sectors(), "count": len(stocks), "nifty500_count": len(NIFTY500_TOP)}
+
+@api_router.get("/indian/search")
+async def indian_search(q: str = ""):
+    """Search Indian stocks by name or symbol"""
+    q_lower = q.lower().strip()
+    if not q_lower:
+        return {"results": []}
+    results = []
+    for sym in NIFTY500_TOP:
+        if q_lower in sym.lower():
+            results.append({"symbol": sym, "name": sym, "type": "stock"})
+    from services.stock_analysis import STOCK_UNIVERSE
+    for yf_sym, meta in STOCK_UNIVERSE.items():
+        if q_lower in meta['symbol'].lower() or q_lower in meta['name'].lower():
+            if not any(r['symbol'] == meta['symbol'] for r in results):
+                results.append({"symbol": meta['symbol'], "name": meta['name'], "sector": meta.get('sector', ''), "type": "stock"})
+    # Add indices
+    for idx_name in INDEX_STOCKS.keys():
+        if q_lower in idx_name.lower():
+            results.append({"symbol": idx_name, "name": idx_name, "type": "index"})
+    return {"results": results[:20]}
+
+@api_router.get("/indian/index/{index_name}/stocks")
+async def indian_index_stocks(index_name: str):
+    """Get stocks under a specific index"""
+    idx = index_name.upper().replace(' ', '').replace('-', '')
+    stocks = INDEX_STOCKS.get(idx, [])
+    if not stocks:
+        # Try partial match
+        for k, v in INDEX_STOCKS.items():
+            if idx in k:
+                stocks = v
+                idx = k
+                break
+    return {"index": idx, "stocks": stocks, "count": len(stocks)}
 
 # ==================== OPTION CHAIN ====================
 
@@ -2930,6 +2973,7 @@ app.add_middleware(
 @app.on_event("startup")
 async def startup_event():
     asyncio.create_task(price_ticker_loop())
+    asyncio.create_task(daily_data_refresh_loop())
     # Ensure second admin user exists with password
     admin2 = await db.users.find_one({"email": "infinityanirudra@gmail.com"}, {"_id": 0})
     if not admin2:
@@ -2948,6 +2992,47 @@ async def startup_event():
         hashed = bcrypt.hashpw("admin456".encode(), bcrypt.gensalt()).decode()
         await db.users.update_one({"email": "infinityanirudra@gmail.com"}, {"$set": {"password": hashed}})
         logger.info("Second admin password set")
+
+async def daily_data_refresh_loop():
+    """Background task that refreshes market data on schedule:
+    - Crypto: Daily
+    - Forex: Mon-Fri
+    - Indian: Mon-Fri
+    """
+    logger.info("Daily data refresh loop started")
+    while True:
+        try:
+            now = datetime.now(timezone.utc)
+            hour = (now + timedelta(hours=5, minutes=30)).hour  # IST
+            weekday = (now + timedelta(hours=5, minutes=30)).weekday()
+            
+            # Refresh at 6 AM IST daily for crypto, Mon-Fri for others
+            if hour == 6:
+                logger.info("Running daily data refresh...")
+                # Crypto refreshes always
+                asyncio.create_task(_load_crypto())
+                
+                # Forex and Indian only Mon-Fri
+                if weekday < 5:
+                    asyncio.create_task(_load_forex())
+                    asyncio.create_task(_load_indian())
+                    logger.info("Weekday refresh: Crypto + Forex + Indian")
+                else:
+                    logger.info("Weekend refresh: Crypto only")
+                
+                # Clear stale caches
+                from services.stock_analysis import _cache as sa_cache
+                from services.indian_market import _cache as im_cache
+                sa_cache.clear()
+                im_cache.clear()
+                logger.info("Caches cleared for fresh data")
+                
+                await asyncio.sleep(3600)  # Sleep 1 hour to avoid re-triggering
+            else:
+                await asyncio.sleep(300)  # Check every 5 min
+        except Exception as e:
+            logger.error(f"Daily refresh error: {e}")
+            await asyncio.sleep(300)
 
 @app.on_event("shutdown")
 async def shutdown_db_client():

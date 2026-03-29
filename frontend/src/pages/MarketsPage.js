@@ -228,12 +228,12 @@ export default function MarketsPage() {
           </Card>
         </TabsContent>
 
-        {/* INDIAN TAB */}
+        {/* INDIAN TAB — Indices only, click to expand stocks */}
         <TabsContent value="indian" className="mt-4">
           {!market_status?.indian?.open && (
             <div className="flex items-center gap-2 px-4 py-2.5 mb-3 rounded-lg bg-[#EAB308]/5 border border-[#EAB308]/20" data-testid="indian-closed-banner">
               <Clock className="w-4 h-4 text-[#EAB308] shrink-0" />
-              <p className="text-xs text-[#EAB308]">Indian market (NSE) is currently closed. Showing last closing prices. Opens Mon-Fri 9:15 AM IST.</p>
+              <p className="text-xs text-[#EAB308]">Indian market (NSE) is currently closed. Opens Mon-Fri 9:15 AM IST.</p>
             </div>
           )}
           <Card className="glass-panel border-white/10 overflow-hidden">
@@ -241,64 +241,37 @@ export default function MarketsPage() {
               <table className="w-full">
                 <thead className="sticky top-0 bg-[#09090B]/95 backdrop-blur-sm border-b border-white/5">
                   <tr className="text-[10px] text-white/40 uppercase tracking-wider">
-                    <th className="text-left py-3 px-4">Name</th>
+                    <th className="text-left py-3 px-4">Index</th>
                     <th className="text-left py-3 px-4">Symbol</th>
-                    <th className="text-right py-3 px-4">Price (INR)</th>
+                    <th className="text-right py-3 px-4">Price (₹)</th>
                     <th className="text-right py-3 px-4">Change</th>
                     <th className="text-right py-3 px-4 hidden sm:table-cell">High</th>
                     <th className="text-right py-3 px-4 hidden sm:table-cell">Low</th>
-                    <th className="text-right py-3 px-4 hidden md:table-cell">Volume</th>
                     <th className="text-right py-3 px-4"></th>
                   </tr>
                 </thead>
                 <tbody>
-                  {/* Indices */}
-                  {filteredIndian.filter(s => s.type === 'index').length > 0 && (
-                    <tr><td colSpan={8} className="py-2 px-4 bg-[#6366F1]/5 border-b border-[#6366F1]/10">
-                      <span className="text-[10px] font-semibold text-[#6366F1] uppercase tracking-widest">Indices</span>
-                    </td></tr>
-                  )}
                   {filteredIndian.filter(s => s.type === 'index').map(s => (
                     <tr key={s.id} className={`market-row border-b border-white/[0.03] cursor-pointer ${priceChanges[s.id] === 'up' ? 'price-flash-up' : priceChanges[s.id] === 'down' ? 'price-flash-down' : ''}`} data-testid={`market-indian-${s.id}`} onClick={() => navigate(`/chart/indian/${s.id}`)}>
                       <td className="py-3 px-4"><span className="text-sm text-white font-semibold">{s.name}</span></td>
                       <td className="py-3 px-4 text-xs text-[#6366F1] font-data font-medium">{s.symbol}</td>
-                      <td className="py-3 px-4 text-right text-sm text-white font-data font-semibold price-value">{fmtPrice(s.price)}</td>
+                      <td className="py-3 px-4 text-right text-sm text-white font-data font-semibold price-value">₹{fmtPrice(s.price)}</td>
                       <td className={`py-3 px-4 text-right text-xs font-data font-medium ${s.change_24h >= 0 ? 'text-[#10B981]' : 'text-[#EF4444]'}`}>{s.change_24h >= 0 ? '+' : ''}{s.change_24h?.toFixed(2)}%</td>
-                      <td className="py-3 px-4 text-right text-xs text-white/50 font-data hidden sm:table-cell">{fmtPrice(s.high)}</td>
-                      <td className="py-3 px-4 text-right text-xs text-white/50 font-data hidden sm:table-cell">{fmtPrice(s.low)}</td>
-                      <td className="py-3 px-4 text-right text-xs text-white/40 font-data hidden md:table-cell">{fmtVol(s.volume)}</td>
+                      <td className="py-3 px-4 text-right text-xs text-white/50 font-data hidden sm:table-cell">₹{fmtPrice(s.high)}</td>
+                      <td className="py-3 px-4 text-right text-xs text-white/50 font-data hidden sm:table-cell">₹{fmtPrice(s.low)}</td>
                       <td className="py-3 px-4 text-right">
                         <Button variant="ghost" size="icon" className="w-7 h-7 text-white/30 hover:text-[#6366F1]" onClick={(e) => { e.stopPropagation(); addToWatchlist(s.id, s.name, 'indian'); }} data-testid={`watchlist-add-${s.id}`}><Star className="w-3.5 h-3.5" /></Button>
                       </td>
                     </tr>
                   ))}
-                  {/* Stocks */}
-                  {filteredIndian.filter(s => s.type === 'stock').length > 0 && (
-                    <tr><td colSpan={8} className="py-2 px-4 bg-[#10B981]/5 border-b border-[#10B981]/10">
-                      <span className="text-[10px] font-semibold text-[#10B981] uppercase tracking-widest">Stocks</span>
-                    </td></tr>
-                  )}
-                  {filteredIndian.filter(s => s.type === 'stock').map(s => (
-                    <tr key={s.id} className={`market-row border-b border-white/[0.03] cursor-pointer ${priceChanges[s.id] === 'up' ? 'price-flash-up' : priceChanges[s.id] === 'down' ? 'price-flash-down' : ''}`} data-testid={`market-indian-${s.id}`} onClick={() => navigate(`/chart/indian/${s.id}`)}>
-                      <td className="py-3 px-4"><span className="text-sm text-white font-medium">{s.name}</span></td>
-                      <td className="py-3 px-4 text-xs text-white/50 font-data">{s.symbol}</td>
-                      <td className="py-3 px-4 text-right text-sm text-white font-data price-value">{fmtPrice(s.price)}</td>
-                      <td className={`py-3 px-4 text-right text-xs font-data ${s.change_24h >= 0 ? 'text-[#10B981]' : 'text-[#EF4444]'}`}>{s.change_24h >= 0 ? '+' : ''}{s.change_24h?.toFixed(2)}%</td>
-                      <td className="py-3 px-4 text-right text-xs text-white/50 font-data hidden sm:table-cell">{fmtPrice(s.high)}</td>
-                      <td className="py-3 px-4 text-right text-xs text-white/50 font-data hidden sm:table-cell">{fmtPrice(s.low)}</td>
-                      <td className="py-3 px-4 text-right text-xs text-white/40 font-data hidden md:table-cell">{fmtVol(s.volume)}</td>
-                      <td className="py-3 px-4 text-right">
-                        <Button variant="ghost" size="icon" className="w-7 h-7 text-white/30 hover:text-[#6366F1]" onClick={(e) => { e.stopPropagation(); addToWatchlist(s.id, s.name, 'indian'); }} data-testid={`watchlist-add-${s.id}`}><Star className="w-3.5 h-3.5" /></Button>
-                      </td>
-                    </tr>
-                  ))}
-                  {filteredIndian.length === 0 && (
-                    <tr><td colSpan={8} className="py-8 text-center text-sm text-white/30">Loading Indian market data...</td></tr>
+                  {filteredIndian.filter(s => s.type === 'index').length === 0 && (
+                    <tr><td colSpan={7} className="py-8 text-center text-sm text-white/30">Loading Indian market indices...</td></tr>
                   )}
                 </tbody>
               </table>
             </div>
           </Card>
+          <p className="text-[10px] text-white/20 mt-2 text-center">Click any index to view chart. Use Analysis page for individual stock fundamentals.</p>
         </TabsContent>
       </Tabs>
     </div>
