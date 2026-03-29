@@ -1,5 +1,14 @@
 # Titan Trade - Changelog
 
+## Mar 29, 2026 - Indian Market Option Chain + Full F&O (Fork Job 10)
+### Live Option Chain (/option-chain)
+- Black-Scholes option pricing engine with live spot prices from OANDA/yfinance
+- 49 F&O stocks + 4 indices (NIFTY, BANKNIFTY, FINNIFTY, MIDCPNIFTY)
+- Full chain table: CE/PE LTP, OI, Volume, IV, Greeks (Delta/Gamma/Theta/Vega)
+- PCR, Max Pain, multiple expiry dates, ATM highlighting, ITM/OTM coloring
+- Lot sizes for all F&O instruments
+- Note: NSE blocks cloud IPs, so prices are Black-Scholes estimated
+
 ## Mar 29, 2026 - MASTER TRADING PROMPT Integration (Fork Job 8)
 ### Signal Engine Upgrade (60-70% of 150KB+ trading knowledge integrated)
 - 10-step signal generation framework: Market Regime → MTF Analysis → Strategy → Indicators → Candlestick → Market Structure → Confluence → Risk → Scenarios → Quality

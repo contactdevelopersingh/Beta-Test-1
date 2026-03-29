@@ -23,6 +23,7 @@ import LeaderboardPage from './pages/LeaderboardPage';
 import TradePage from './pages/TradePage';
 import StockAnalysisPage from './pages/StockAnalysisPage';
 import ScreenerPage from './pages/ScreenerPage';
+import OptionChainPage from './pages/OptionChainPage';
 
 function AppRouter() {
   const location = useLocation();
@@ -57,6 +58,7 @@ function AppRouter() {
         <Route path="/stock-analysis" element={<StockAnalysisPage />} />
         <Route path="/stock-analysis/:symbol" element={<StockAnalysisPage />} />
         <Route path="/screener" element={<ScreenerPage />} />
+        <Route path="/option-chain" element={<OptionChainPage />} />
         <Route path="/settings" element={<SettingsPage />} />
       </Route>
     </Routes>

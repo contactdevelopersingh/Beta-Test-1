@@ -121,8 +121,143 @@ app.get('/ta-batch', async (req, res) => {
   res.json({ results });
 });
 
-app.get('/health', (req, res) => res.json({ status: 'ok', service: 'tv-service', symbols: Object.keys(SYMBOL_MAP).length }));
+app.get('/health', (req, res) => res.json({ status: 'ok', service: 'tv-nse-service', symbols: Object.keys(SYMBOL_MAP).length }));
+
+// ==================== NSE INDIA DATA ====================
+const { NseIndia } = require('stock-nse-india');
+const nse = new NseIndia();
+
+// Cache
+const nseCache = {};
+const NSE_TTL = 60000; // 1 min
+function getNseCache(key) {
+  const c = nseCache[key];
+  if (c && Date.now() - c.time < NSE_TTL) return c.data;
+  return null;
+}
+function setNseCache(key, data) { nseCache[key] = { data, time: Date.now() }; }
+
+// All NSE stock symbols
+app.get('/nse/stocks', async (req, res) => {
+  try {
+    const cached = getNseCache('all_stocks');
+    if (cached) return res.json(cached);
+    const symbols = await nse.getAllStockSymbols();
+    const result = { stocks: symbols, count: symbols.length };
+    setNseCache('all_stocks', result);
+    res.json(result);
+  } catch (e) { res.json({ error: e.message, stocks: [] }); }
+});
+
+// Equity details
+app.get('/nse/equity/:symbol', async (req, res) => {
+  try {
+    const { symbol } = req.params;
+    const cached = getNseCache(`eq_${symbol}`);
+    if (cached) return res.json(cached);
+    const data = await nse.getEquityDetails(symbol.toUpperCase());
+    setNseCache(`eq_${symbol}`, data);
+    res.json(data);
+  } catch (e) { res.json({ error: e.message }); }
+});
+
+// Equity Option Chain (LIVE)
+app.get('/nse/optionchain/equity/:symbol', async (req, res) => {
+  try {
+    const { symbol } = req.params;
+    const cached = getNseCache(`oc_eq_${symbol}`);
+    if (cached) return res.json(cached);
+    const data = await nse.getEquityOptionChain(symbol.toUpperCase());
+    setNseCache(`oc_eq_${symbol}`, data);
+    res.json(data);
+  } catch (e) { res.json({ error: e.message }); }
+});
+
+// Index Option Chain (NIFTY, BANKNIFTY)
+app.get('/nse/optionchain/index/:index', async (req, res) => {
+  try {
+    const { index } = req.params;
+    const cached = getNseCache(`oc_idx_${index}`);
+    if (cached) return res.json(cached);
+    const data = await nse.getIndexOptionChain(index.toUpperCase());
+    setNseCache(`oc_idx_${index}`, data);
+    res.json(data);
+  } catch (e) { res.json({ error: e.message }); }
+});
+
+// All market indices
+app.get('/nse/indices', async (req, res) => {
+  try {
+    const cached = getNseCache('indices');
+    if (cached) return res.json(cached);
+    const data = await nse.getEquityStockIndices('NIFTY 50');
+    setNseCache('indices', data);
+    res.json(data);
+  } catch (e) { res.json({ error: e.message }); }
+});
+
+// Gainers & Losers
+app.get('/nse/gainers-losers/:index', async (req, res) => {
+  try {
+    const { index } = req.params;
+    const cached = getNseCache(`gl_${index}`);
+    if (cached) return res.json(cached);
+    const data = await nse.getGainersAndLosersByIndex(index.toUpperCase().replace(/-/g, ' '));
+    setNseCache(`gl_${index}`, data);
+    res.json(data);
+  } catch (e) { res.json({ error: e.message }); }
+});
+
+// Most Active
+app.get('/nse/most-active', async (req, res) => {
+  try {
+    const cached = getNseCache('most_active');
+    if (cached) return res.json(cached);
+    const data = await nse.getMostActiveEquities();
+    setNseCache('most_active', data);
+    res.json(data);
+  } catch (e) { res.json({ error: e.message }); }
+});
+
+// Corporate Info
+app.get('/nse/corporate/:symbol', async (req, res) => {
+  try {
+    const { symbol } = req.params;
+    const data = await nse.getEquityCorporateInfo(symbol.toUpperCase());
+    res.json(data);
+  } catch (e) { res.json({ error: e.message }); }
+});
+
+// Trade Info
+app.get('/nse/tradeinfo/:symbol', async (req, res) => {
+  try {
+    const { symbol } = req.params;
+    const data = await nse.getEquityTradeInfo(symbol.toUpperCase());
+    res.json(data);
+  } catch (e) { res.json({ error: e.message }); }
+});
+
+// Historical Data
+app.get('/nse/historical/:symbol', async (req, res) => {
+  try {
+    const { symbol } = req.params;
+    const days = parseInt(req.query.days) || 365;
+    const end = new Date();
+    const start = new Date(end - days * 86400000);
+    const data = await nse.getEquityHistoricalData(symbol.toUpperCase(), { start, end });
+    res.json(data);
+  } catch (e) { res.json({ error: e.message }); }
+});
+
+// Intraday Data
+app.get('/nse/intraday/:symbol', async (req, res) => {
+  try {
+    const { symbol } = req.params;
+    const data = await nse.getEquityIntradayData(symbol.toUpperCase());
+    res.json(data);
+  } catch (e) { res.json({ error: e.message }); }
+});
 
 app.listen(PORT, '127.0.0.1', () => {
-  console.log(`TradingView Service running on port ${PORT} | ${Object.keys(SYMBOL_MAP).length} symbols mapped`);
+  console.log(`TradingView + NSE Service running on port ${PORT} | ${Object.keys(SYMBOL_MAP).length} TV symbols`);
 });

@@ -2781,6 +2781,39 @@ async def get_portfolio_heat(user: dict = Depends(get_current_user)):
         }
     }
 
+# ==================== OPTION CHAIN ====================
+
+from services.option_chain import build_option_chain, get_fno_list, FNO_STOCKS, FNO_INDICES
+
+@api_router.get("/options/fno-list")
+async def fno_list():
+    return get_fno_list()
+
+@api_router.get("/options/chain/{symbol}")
+async def option_chain(symbol: str, expiry: int = 0):
+    """Get option chain for a symbol. Uses Black-Scholes with live price."""
+    symbol_upper = symbol.upper()
+    # Get live price
+    spot = 0
+    if symbol_upper in ["NIFTY", "BANKNIFTY", "FINNIFTY", "MIDCPNIFTY"]:
+        idx_map = {"NIFTY": "nifty50", "BANKNIFTY": "banknifty", "FINNIFTY": "niftyit", "MIDCPNIFTY": "nifty50"}
+        asset_id = idx_map.get(symbol_upper, '')
+        item = next((i for i in _live['indian'] if i['id'] == asset_id), None)
+        if item: spot = item['price']
+    else:
+        # Search by symbol in indian stocks
+        item = next((i for i in _live['indian'] if i.get('symbol', '').upper() == symbol_upper), None)
+        if not item:
+            # Try ID match
+            item = next((i for i in _live['indian'] if i['id'] == symbol.lower()), None)
+        if item: spot = item['price']
+    
+    if not spot:
+        raise HTTPException(status_code=404, detail=f"Live price not available for {symbol_upper}")
+    
+    chain = build_option_chain(symbol_upper, spot, expiry_idx=expiry)
+    return chain
+
 # ==================== STOCK ANALYSIS ====================
 
 from services.stock_analysis import get_stock_analysis, get_peers, run_screener, get_all_sectors, get_stock_list
