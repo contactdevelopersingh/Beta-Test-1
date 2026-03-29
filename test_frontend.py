@@ -2,17 +2,17 @@ from playwright.sync_api import sync_playwright
 
 def run_cuj(page):
     page.goto("http://localhost:3000/auth")
-    page.wait_for_timeout(3000)
+    page.wait_for_timeout(10000)
 
     # Login
     page.get_by_placeholder("you@example.com").fill("admin@titantrade.com")
     page.get_by_placeholder("Enter password").fill("adminpassword")
     page.get_by_role("button", name="Log In", exact=True).click()
-    page.wait_for_timeout(3000)
+    page.wait_for_timeout(5000)
 
     # Navigate to signals
     page.goto("http://localhost:3000/signals")
-    page.wait_for_timeout(3000)
+    page.wait_for_timeout(5000)
 
     # Change market to Indian
     page.get_by_test_id("market-select").click()
@@ -45,7 +45,8 @@ if __name__ == "__main__":
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
         context = browser.new_context(
-            record_video_dir="/home/jules/verification/videos"
+            record_video_dir="/home/jules/verification/videos",
+            viewport={'width': 1280, 'height': 720}
         )
         page = context.new_page()
         try:
