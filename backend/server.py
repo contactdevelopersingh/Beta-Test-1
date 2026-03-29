@@ -21,7 +21,7 @@ from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from pydantic import BaseModel, Field, ConfigDict, validator
 from typing import List, Optional, Dict
-from emergentintegrations.llm.chat import LlmChat, UserMessage
+from litellm import completion
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -1332,14 +1332,18 @@ For every signal, provide 3 scenarios:
 === OUTPUT FORMAT (JSON ONLY, no markdown) ===
 {{"direction":"BUY/SELL","confidence":40-98,"grade":"A+/A/B+/B/C","signal_strength":1-10,"entry_price":number,"entry_type":"Market/Limit/Stop","take_profit_1":number,"take_profit_2":number,"take_profit_3":number,"stop_loss":number,"sl_atr_multiple":"1.5x/2.0x ATR","risk_reward":"1:X.X","risk_level":"LOW/MEDIUM/HIGH","market_regime":"STRONG_TREND/MODERATE_TREND/RANGING/VOLATILE/BREAKOUT_IMMINENT","trend_strength":"X/10","volatility_state":"HIGH/NORMAL/LOW","timeframes_analyzed":["{timeframes_str.replace(', ','","')}"],"primary_timeframe":"TF","strategy_used":"{strategy}","strategy_auto_selected":"strategy name if auto","holding_duration":"duration","confluence_score":3-6,"confluence_check":{{"higher_tf_trend":true/false,"momentum_confirm":true/false,"volume_confirm":true/false,"price_structure":true/false,"volatility_suitable":true/false,"entry_timing":true/false}},"confluence_factors":["factor1","factor2","factor3","factor4"],"indicators_used":{{"rsi":"XX (state)","macd":"signal state","ema":"alignment","bollinger":"state","adx":"XX (strength)","volume":"ratio vs avg","atr":"value","supertrend":"green/red"}},"candlestick_pattern":"pattern or none","chart_pattern":"pattern or none","technical_summary":"Complete summary","analysis":"4-5 sentence DEEP analysis","trade_logic":"3-4 sentences institutional WHY","trade_reason":"Exact triggers","key_levels":["level1","level2","level3"],"market_condition":"Trending/Ranging/Breakout/Reversal","higher_tf_bias":"direction + reason","invalidation":"price level + WHY","invalidation_time":"X hours/candles","scenario_bull":"Bull: probability% - outcome","scenario_base":"Base: probability% - outcome","scenario_bear":"Bear: probability% - outcome","session_note":"timing","position_sizing_note":"2% risk, SL distance, size","trade_management":"TP1=exit 40%, move SL to BE. TP2=exit 30%, trail 2xATR. TP3=trail remaining"}}}}"""
 
-    chat = LlmChat(
-        api_key=EMERGENT_LLM_KEY,
-        session_id=f"signal_{uuid.uuid4().hex[:8]}",
-        system_message=system_prompt
-    )
     try:
-        msg = UserMessage(text=f"Generate a professional multi-timeframe trading signal for {data.asset_name} ({data.asset_type.upper()}).\nPrimary Timeframe: {data.timeframe}\nAll Timeframes: {timeframes_str}\nStrategy: {strategy}\nTrading Mode: {data.trading_mode}\n\n=== LIVE MARKET DATA (from OANDA/Kraken/yfinance) ===\n{market_context}\n\n=== TRADINGVIEW TECHNICAL ANALYSIS (real computed indicators) ===\n{tv_analysis}\n\nIMPORTANT: Use BOTH data sources above. The TradingView data shows REAL computed indicator values across timeframes. Align your signal direction with the TradingView consensus when confidence is high. If TradingView shows Strong Buy/Sell across 3+ timeframes, give HIGH confidence. If TradingView contradicts your analysis, lower confidence and explain the divergence.")
-        response_text = await chat.send_message(msg)
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": f"Generate a professional multi-timeframe trading signal for {data.asset_name} ({data.asset_type.upper()}).\nPrimary Timeframe: {data.timeframe}\nAll Timeframes: {timeframes_str}\nStrategy: {strategy}\nTrading Mode: {data.trading_mode}\n\n=== LIVE MARKET DATA (from OANDA/Kraken/yfinance) ===\n{market_context}\n\n=== TRADINGVIEW TECHNICAL ANALYSIS (real computed indicators) ===\n{tv_analysis}\n\nIMPORTANT: Use BOTH data sources above. The TradingView data shows REAL computed indicator values across timeframes. Align your signal direction with the TradingView consensus when confidence is high. If TradingView shows Strong Buy/Sell across 3+ timeframes, give HIGH confidence. If TradingView contradicts your analysis, lower confidence and explain the divergence."}
+        ]
+        import os
+        os.environ['GEMINI_API_KEY'] = EMERGENT_LLM_KEY
+        response = completion(
+            model="gemini/gemini-2.5-flash",
+            messages=messages
+        )
+        response_text = response.choices[0].message.content
         try:
             clean = response_text.strip()
             if clean.startswith("```"):
