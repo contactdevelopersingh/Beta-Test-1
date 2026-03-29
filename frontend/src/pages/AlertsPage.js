@@ -89,7 +89,7 @@ export default function AlertsPage() {
   const currentAssets = ALERT_ASSETS[form.asset_type] || [];
 
   return (
-    <div className="space-y-6" data-testid="alerts-page">
+    <div className="space-y-6 page-enter" data-testid="alerts-page">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-white" style={{ fontFamily: 'Manrope' }}>Price Alerts</h1>

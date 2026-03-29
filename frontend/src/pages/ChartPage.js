@@ -54,7 +54,7 @@ export default function ChartPage() {
   };
 
   return (
-    <div className="space-y-6" data-testid="chart-page">
+    <div className="space-y-6 page-enter" data-testid="chart-page">
       {/* Header */}
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" className="w-8 h-8 text-white/50 hover:text-white" onClick={() => navigate(-1)} data-testid="chart-back-btn">

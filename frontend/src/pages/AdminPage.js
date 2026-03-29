@@ -116,7 +116,7 @@ export default function AdminPage() {
   ];
 
   return (
-    <div className="space-y-6" data-testid="admin-page">
+    <div className="space-y-6 page-enter" data-testid="admin-page">
       <div>
         <h1 className="text-2xl font-bold text-white flex items-center gap-2" style={{ fontFamily: 'Manrope' }}>
           <Shield className="w-6 h-6 text-[#EF4444]" /> Admin Panel

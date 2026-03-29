@@ -134,7 +134,7 @@ export default function JournalPage() {
   });
 
   return (
-    <div className="space-y-6" data-testid="journal-page">
+    <div className="space-y-6 page-enter" data-testid="journal-page">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-white" style={{ fontFamily: 'Manrope' }}>Trade Journal</h1>

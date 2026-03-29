@@ -531,6 +531,9 @@ export default function SignalsPage() {
                           <Badge variant="outline" className="text-[9px] border-cyan-500/25 text-cyan-400 capitalize">{sig.trading_mode?.replace('_', ' ')}</Badge>
                         )}
                         <Badge variant="outline" className="text-[10px] border-[#6366F1]/30 text-[#6366F1]">Grade: {sig.grade}</Badge>
+                        {sig.signal_strength && (
+                          <Badge variant="outline" className="text-[9px] border-amber-500/20 text-amber-400/80 font-data">{sig.signal_strength}/10</Badge>
+                        )}
                         <RiskBadge riskReward={sig.risk_reward} />
                         {sig.market_regime && (
                           <Badge variant="outline" className="text-[9px] border-cyan-500/20 text-cyan-400/80">{sig.market_regime?.replace('_', ' ')}</Badge>
@@ -597,6 +600,7 @@ export default function SignalsPage() {
                             {hitTP1 ? <><Lock className="w-3 h-3 text-emerald-400" /> <span className="text-emerald-400">TP1</span></> : <><TrendingUp className="w-3 h-3" /> TP1</>}
                           </p>
                           <p className={`text-sm sm:text-base font-data font-semibold ${hitTP1 ? 'text-emerald-400' : 'text-emerald-500/80'}`}>{sig.take_profit_1 || 'N/A'}</p>
+                          {sig.risk_reward_1 && <p className="text-[8px] text-[#6366F1]/60 font-data">{sig.risk_reward_1}</p>}
                           {hitTP1 && <p className="text-[8px] text-emerald-400/60">LOCKED</p>}
                         </div>
                         {(sig.num_tp_levels || 3) >= 2 && (
@@ -605,6 +609,7 @@ export default function SignalsPage() {
                             {hitTP2 ? <><Lock className="w-3 h-3 text-emerald-400" /> <span className="text-emerald-400">TP2</span></> : <><TrendingUp className="w-3 h-3" /> TP2</>}
                           </p>
                           <p className={`text-sm sm:text-base font-data font-semibold ${hitTP2 ? 'text-emerald-400' : 'text-emerald-500/80'}`}>{sig.take_profit_2 || 'N/A'}</p>
+                          {sig.risk_reward_2 && <p className="text-[8px] text-[#6366F1]/60 font-data">{sig.risk_reward_2}</p>}
                           {hitTP2 && <p className="text-[8px] text-emerald-400/60">LOCKED</p>}
                         </div>
                         )}
@@ -614,6 +619,7 @@ export default function SignalsPage() {
                             {hitTP3 ? <><Lock className="w-3 h-3 text-emerald-400" /> <span className="text-emerald-400">TP3</span></> : <><TrendingUp className="w-3 h-3" /> TP3</>}
                           </p>
                           <p className={`text-sm sm:text-base font-data font-semibold ${hitTP3 ? 'text-emerald-400' : 'text-emerald-500/60'}`}>{sig.take_profit_3 || 'N/A'}</p>
+                          {sig.risk_reward_3 && <p className="text-[8px] text-[#6366F1]/60 font-data">{sig.risk_reward_3}</p>}
                           {hitTP3 && <p className="text-[8px] text-emerald-400/60">LOCKED</p>}
                         </div>
                         )}
@@ -722,6 +728,40 @@ export default function SignalsPage() {
                                   <p className="text-[10px] text-red-400/60">{sig.scenario_bear}</p>
                                 </div>
                               )}
+                            </div>
+                          )}
+
+                          {/* Confluence Checkmarks */}
+                          {sig.confluence_check && typeof sig.confluence_check === 'object' && (
+                            <div className="p-2.5 rounded-lg bg-white/[0.02] border border-white/5">
+                              <p className="text-[10px] text-white/40 uppercase tracking-wider font-medium mb-1.5">Confluence Check ({sig.confluence_score || 0}/6)</p>
+                              <div className="grid grid-cols-2 sm:grid-cols-3 gap-1">
+                                {[
+                                  { key: 'higher_tf_trend', label: 'Higher TF Trend' },
+                                  { key: 'momentum_confirm', label: 'Momentum' },
+                                  { key: 'volume_confirm', label: 'Volume' },
+                                  { key: 'price_structure', label: 'Price Structure' },
+                                  { key: 'volatility_suitable', label: 'Volatility' },
+                                  { key: 'entry_timing', label: 'Entry Timing' },
+                                ].map(c => (
+                                  <div key={c.key} className="flex items-center gap-1.5 text-[10px]">
+                                    {sig.confluence_check[c.key] ? (
+                                      <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                                    ) : (
+                                      <XCircle className="w-3 h-3 text-red-400/50" />
+                                    )}
+                                    <span className={sig.confluence_check[c.key] ? 'text-white/60' : 'text-white/30'}>{c.label}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Trade Management */}
+                          {sig.trade_management && (
+                            <div className="p-2 rounded-lg bg-amber-500/[0.03] border border-amber-500/10">
+                              <p className="text-[9px] text-amber-400/70 uppercase font-medium mb-0.5">Trade Management</p>
+                              <p className="text-[10px] text-amber-400/60">{sig.trade_management}</p>
                             </div>
                           )}
 

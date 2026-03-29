@@ -1339,6 +1339,54 @@ For every signal, provide 3 scenarios:
                 "key_levels": [], "market_condition": random.choice(["Trending", "Ranging", "Breakout", "Reversal"]),
                 "higher_tf_bias": "Neutral", "invalidation": "N/A"
             }
+        # === R:R ENFORCEMENT ENGINE ===
+        # If user specified a manual R:R, recalculate TP levels mathematically
+        if data.risk_reward and signal_data.get('entry_price') and signal_data.get('stop_loss'):
+            try:
+                rr_parts = data.risk_reward.replace(' ', '').split(':')
+                target_rr = float(rr_parts[1]) if len(rr_parts) == 2 else float(rr_parts[0])
+                entry = float(signal_data['entry_price'])
+                sl = float(signal_data['stop_loss'])
+                risk = abs(entry - sl)
+                direction = signal_data.get('direction', 'BUY')
+
+                if risk > 0:
+                    if direction == 'BUY':
+                        signal_data['take_profit_1'] = round(entry + (risk * min(target_rr, 1.5)), 5 if entry < 10 else 2)
+                        signal_data['take_profit_2'] = round(entry + (risk * target_rr), 5 if entry < 10 else 2)
+                        signal_data['take_profit_3'] = round(entry + (risk * target_rr * 1.5), 5 if entry < 10 else 2)
+                    else:
+                        signal_data['take_profit_1'] = round(entry - (risk * min(target_rr, 1.5)), 5 if entry < 10 else 2)
+                        signal_data['take_profit_2'] = round(entry - (risk * target_rr), 5 if entry < 10 else 2)
+                        signal_data['take_profit_3'] = round(entry - (risk * target_rr * 1.5), 5 if entry < 10 else 2)
+
+                    # Recalculate actual R:R for each TP
+                    rr1 = round(abs(signal_data['take_profit_1'] - entry) / risk, 1)
+                    rr2 = round(abs(signal_data['take_profit_2'] - entry) / risk, 1)
+                    rr3 = round(abs(signal_data['take_profit_3'] - entry) / risk, 1)
+                    signal_data['risk_reward'] = f"1:{target_rr}"
+                    signal_data['risk_reward_tp1'] = f"1:{rr1}"
+                    signal_data['risk_reward_tp2'] = f"1:{rr2}"
+                    signal_data['risk_reward_tp3'] = f"1:{rr3}"
+                    logger.info(f"R:R enforced: {data.risk_reward} → TP1=1:{rr1}, TP2=1:{rr2}, TP3=1:{rr3}")
+            except Exception as e:
+                logger.warning(f"R:R enforcement failed: {e}")
+
+        # Always compute actual R:R even if user didn't specify
+        if signal_data.get('entry_price') and signal_data.get('stop_loss') and not data.risk_reward:
+            try:
+                entry = float(signal_data['entry_price'])
+                sl = float(signal_data['stop_loss'])
+                risk = abs(entry - sl)
+                if risk > 0:
+                    for tp_key in ['take_profit_1', 'take_profit_2', 'take_profit_3']:
+                        tp_val = signal_data.get(tp_key)
+                        if tp_val:
+                            rr_val = round(abs(float(tp_val) - entry) / risk, 1)
+                            signal_data[f'risk_reward_{tp_key.split("_")[-1]}'] = f"1:{rr_val}"
+            except Exception:
+                pass
+
         signal_doc = {
             "signal_id": f"sig_{uuid.uuid4().hex[:12]}",
             "user_id": user['user_id'],

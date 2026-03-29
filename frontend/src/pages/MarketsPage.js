@@ -70,7 +70,7 @@ export default function MarketsPage() {
   const filteredIndian = indian.filter(s => s.name?.toLowerCase().includes(search.toLowerCase()) || s.symbol?.toLowerCase().includes(search.toLowerCase()));
 
   return (
-    <div className="space-y-6" data-testid="markets-page">
+    <div className="space-y-6 page-enter" data-testid="markets-page">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-white" style={{ fontFamily: 'Manrope' }}>Markets</h1>
