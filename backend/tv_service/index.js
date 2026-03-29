@@ -46,8 +46,14 @@ const CACHE_TTL = 30000;
 // Get TradingView Technical Analysis across all timeframes
 app.get('/ta/:assetId', async (req, res) => {
   const { assetId } = req.params;
-  const tvSymbol = SYMBOL_MAP[assetId];
-  if (!tvSymbol) return res.json({ error: 'Unknown asset', data: null });
+  let tvSymbol = SYMBOL_MAP[assetId];
+  if (!tvSymbol) {
+    if (assetId.startsWith('NSE:') || assetId.startsWith('BSE:')) {
+      tvSymbol = assetId;
+    } else {
+      return res.json({ error: 'Unknown asset', data: null });
+    }
+  }
 
   // Check cache
   const cached = cache[assetId];
@@ -111,7 +117,10 @@ app.get('/ta-batch', async (req, res) => {
 
   const results = {};
   await Promise.allSettled(ids.map(async (id) => {
-    const tvSymbol = SYMBOL_MAP[id];
+    let tvSymbol = SYMBOL_MAP[id];
+    if (!tvSymbol && (id.startsWith('NSE:') || id.startsWith('BSE:'))) {
+      tvSymbol = id;
+    }
     if (!tvSymbol) return;
     try {
       const ta = await TradingView.getTA(tvSymbol);
