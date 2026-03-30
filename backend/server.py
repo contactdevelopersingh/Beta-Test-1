@@ -19,7 +19,7 @@ import re
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
-from pydantic import BaseModel, Field, ConfigDict, validator
+from pydantic import BaseModel
 from typing import List, Optional, Dict
 from emergentintegrations.llm.chat import LlmChat, UserMessage
 import smtplib
@@ -36,7 +36,7 @@ client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ['DB_NAME']]
 
 # Config
-JWT_SECRET = os.environ.get('JWT_SECRET', 'titan-trade-jwt-secret-2026')
+JWT_SECRET = os.environ['JWT_SECRET']
 JWT_ALGORITHM = 'HS256'
 EMERGENT_LLM_KEY = os.environ.get('EMERGENT_LLM_KEY')
 GMAIL_USER = os.environ.get('GMAIL_USER')
@@ -2808,7 +2808,7 @@ async def get_portfolio_heat(user: dict = Depends(get_current_user)):
 
 # ==================== INDIAN MARKET EXTENDED ====================
 
-from services.indian_market import get_all_nifty_stocks, get_market_movers, get_stock_quote, NIFTY500_TOP
+from services.indian_market import get_all_nifty_stocks, get_market_movers, get_stock_quote
 
 # Index → Stocks mapping
 INDEX_STOCKS = {
@@ -2909,7 +2909,7 @@ async def indian_index_stocks(index_name: str):
 
 # ==================== OPTION CHAIN ====================
 
-from services.option_chain import build_option_chain, get_fno_list, FNO_STOCKS, FNO_INDICES
+from services.option_chain import build_option_chain, get_fno_list
 
 @api_router.get("/options/fno-list")
 async def fno_list():
