@@ -1809,36 +1809,110 @@ async def get_journal(user: dict = Depends(get_current_user)):
 
 @api_router.get("/journal/stats")
 async def get_journal_stats(user: dict = Depends(get_current_user)):
-    trades = await db.trade_journal.find({"user_id": user['user_id']}, {"_id": 0}).to_list(500)
-    total = len(trades)
-    closed = [t for t in trades if t.get('status') == 'closed' and t.get('exit_price')]
-    wins = 0
-    losses = 0
-    total_pnl = 0
-    for t in closed:
-        entry = t.get('entry_price', 0)
-        exit_p = t.get('exit_price', 0)
-        qty = t.get('quantity', 0)
-        if t.get('direction') == 'BUY':
-            pnl = (exit_p - entry) * qty
-        else:
-            pnl = (entry - exit_p) * qty
-        total_pnl += pnl
-        if pnl > 0:
-            wins += 1
-        elif pnl < 0:
-            losses += 1
-    win_rate = (wins / len(closed) * 100) if closed else 0
-    emotion_counts = {}
-    for t in trades:
-        em = t.get('emotion_tag', 'unknown')
-        emotion_counts[em] = emotion_counts.get(em, 0) + 1
-    return {
-        "total_trades": total, "open_trades": total - len(closed),
-        "closed_trades": len(closed), "wins": wins, "losses": losses,
-        "win_rate": round(win_rate, 1), "total_pnl": round(total_pnl, 2),
-        "emotion_breakdown": emotion_counts
-    }
+    pipeline = [
+        {"$match": {"user_id": user['user_id']}},
+        {"$facet": {
+            "stats": [
+                {"$group": {
+                    "_id": None,
+                    "total_trades": {"$sum": 1},
+                    "closed_trades": {
+                        "$sum": {"$cond": [{"$and": [{"$eq": ["$status", "closed"]}, {"$ne": ["$exit_price", None]}]}, 1, 0]}
+                    },
+                    "wins": {
+                        "$sum": {
+                            "$cond": [
+                                {"$and": [
+                                    {"$eq": ["$status", "closed"]},
+                                    {"$ne": ["$exit_price", None]},
+                                    {"$gt": [
+                                        {"$cond": [
+                                            {"$eq": ["$direction", "BUY"]},
+                                            {"$multiply": [{"$subtract": ["$exit_price", "$entry_price"]}, {"$ifNull": ["$quantity", 0]}]},
+                                            {"$multiply": [{"$subtract": ["$entry_price", "$exit_price"]}, {"$ifNull": ["$quantity", 0]}]}
+                                        ]},
+                                        0
+                                    ]}
+                                ]},
+                                1, 0
+                            ]
+                        }
+                    },
+                    "losses": {
+                        "$sum": {
+                            "$cond": [
+                                {"$and": [
+                                    {"$eq": ["$status", "closed"]},
+                                    {"$ne": ["$exit_price", None]},
+                                    {"$lt": [
+                                        {"$cond": [
+                                            {"$eq": ["$direction", "BUY"]},
+                                            {"$multiply": [{"$subtract": ["$exit_price", "$entry_price"]}, {"$ifNull": ["$quantity", 0]}]},
+                                            {"$multiply": [{"$subtract": ["$entry_price", "$exit_price"]}, {"$ifNull": ["$quantity", 0]}]}
+                                        ]},
+                                        0
+                                    ]}
+                                ]},
+                                1, 0
+                            ]
+                        }
+                    },
+                    "total_pnl": {
+                        "$sum": {
+                            "$cond": [
+                                {"$and": [
+                                    {"$eq": ["$status", "closed"]},
+                                    {"$ne": ["$exit_price", None]}
+                                ]},
+                                {"$cond": [
+                                    {"$eq": ["$direction", "BUY"]},
+                                    {"$multiply": [{"$subtract": ["$exit_price", "$entry_price"]}, {"$ifNull": ["$quantity", 0]}]},
+                                    {"$multiply": [{"$subtract": ["$entry_price", "$exit_price"]}, {"$ifNull": ["$quantity", 0]}]}
+                                ]},
+                                0
+                            ]
+                        }
+                    }
+                }}
+            ],
+            "emotions": [
+                {"$group": {
+                    "_id": {"$ifNull": ["$emotion_tag", "unknown"]},
+                    "count": {"$sum": 1}
+                }}
+            ]
+        }}
+    ]
+    res = await db.trade_journal.aggregate(pipeline).to_list(1)
+
+    if res and res[0]["stats"]:
+        stats = res[0]["stats"][0]
+        emotions = {e["_id"] if e["_id"] is not None else "unknown": e["count"] for e in res[0]["emotions"]}
+
+        total = stats.get("total_trades", 0)
+        closed = stats.get("closed_trades", 0)
+        wins = stats.get("wins", 0)
+        losses = stats.get("losses", 0)
+        total_pnl = stats.get("total_pnl", 0)
+        win_rate = (wins / closed * 100) if closed > 0 else 0
+
+        return {
+            "total_trades": total,
+            "open_trades": total - closed,
+            "closed_trades": closed,
+            "wins": wins,
+            "losses": losses,
+            "win_rate": round(win_rate, 1),
+            "total_pnl": round(total_pnl, 2),
+            "emotion_breakdown": emotions
+        }
+    else:
+        return {
+            "total_trades": 0, "open_trades": 0,
+            "closed_trades": 0, "wins": 0, "losses": 0,
+            "win_rate": 0, "total_pnl": 0,
+            "emotion_breakdown": {}
+        }
 
 @api_router.post("/journal")
 async def create_journal_entry(data: TradeJournalEntry, user: dict = Depends(get_current_user)):
