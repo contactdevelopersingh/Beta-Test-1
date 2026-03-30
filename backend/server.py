@@ -3015,24 +3015,33 @@ app.add_middleware(
 async def startup_event():
     asyncio.create_task(price_ticker_loop())
     asyncio.create_task(daily_data_refresh_loop())
+
     # Ensure second admin user exists with password
-    admin2 = await db.users.find_one({"email": "infinityanirudra@gmail.com"}, {"_id": 0})
-    if not admin2:
-        hashed = bcrypt.hashpw("admin456".encode(), bcrypt.gensalt()).decode()
-        await db.users.insert_one({
-            "user_id": f"user_{uuid.uuid4().hex[:12]}",
-            "email": "infinityanirudra@gmail.com",
-            "name": "Anirudra Admin",
-            "password": hashed,
-            "picture": None,
-            "auth_type": "jwt",
-            "created_at": datetime.now(timezone.utc).isoformat()
-        })
-        logger.info("Second admin user created: infinityanirudra@gmail.com")
-    elif 'password' not in admin2 or not admin2.get('password'):
-        hashed = bcrypt.hashpw("admin456".encode(), bcrypt.gensalt()).decode()
-        await db.users.update_one({"email": "infinityanirudra@gmail.com"}, {"$set": {"password": hashed}})
-        logger.info("Second admin password set")
+    admin_email = "infinityanirudra@gmail.com"
+    admin2 = await db.users.find_one({"email": admin_email}, {"_id": 0})
+
+    if not admin2 or 'password' not in admin2 or not admin2.get('password'):
+        admin_password = os.environ.get('ADMIN_PASSWORD')
+        if not admin_password:
+            admin_password = uuid.uuid4().hex
+            logger.warning(f"No ADMIN_PASSWORD provided in environment. Generated secure password for {admin_email}: {admin_password}")
+
+        hashed = bcrypt.hashpw(admin_password.encode(), bcrypt.gensalt()).decode()
+
+        if not admin2:
+            await db.users.insert_one({
+                "user_id": f"user_{uuid.uuid4().hex[:12]}",
+                "email": admin_email,
+                "name": "Anirudra Admin",
+                "password": hashed,
+                "picture": None,
+                "auth_type": "jwt",
+                "created_at": datetime.now(timezone.utc).isoformat()
+            })
+            logger.info(f"Second admin user created: {admin_email}")
+        else:
+            await db.users.update_one({"email": admin_email}, {"$set": {"password": hashed}})
+            logger.info("Second admin password set")
 
 async def daily_data_refresh_loop():
     """Background task that refreshes market data on schedule:
