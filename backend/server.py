@@ -2430,9 +2430,15 @@ async def get_leaderboard():
     ]
     results = await db.trade_journal.aggregate(pipeline).to_list(50)
 
+    # Fetch all users in one query to avoid N+1 issue
+    user_ids = [r['_id'] for r in results]
+    users_cursor = db.users.find({"user_id": {"$in": user_ids}}, {"_id": 0, "password": 0})
+    users_list = await users_cursor.to_list(length=None)
+    user_map = {u['user_id']: u for u in users_list}
+
     leaderboard = []
     for i, r in enumerate(results):
-        user = await db.users.find_one({"user_id": r['_id']}, {"_id": 0, "password": 0})
+        user = user_map.get(r['_id'])
         if not user:
             continue
         win_rate = (r['wins'] / r['total_trades'] * 100) if r['total_trades'] > 0 else 0
