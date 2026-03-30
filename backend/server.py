@@ -21,7 +21,7 @@ from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from pydantic import BaseModel, Field, ConfigDict, validator
 from typing import List, Optional, Dict
-from litellm import completion
+from litellm import acompletion
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -1338,8 +1338,8 @@ For every signal, provide 3 scenarios:
             {"role": "user", "content": f"Generate a professional multi-timeframe trading signal for {data.asset_name} ({data.asset_type.upper()}).\nPrimary Timeframe: {data.timeframe}\nAll Timeframes: {timeframes_str}\nStrategy: {strategy}\nTrading Mode: {data.trading_mode}\n\n=== LIVE MARKET DATA (from OANDA/Kraken/yfinance) ===\n{market_context}\n\n=== TRADINGVIEW TECHNICAL ANALYSIS (real computed indicators) ===\n{tv_analysis}\n\nIMPORTANT: Use BOTH data sources above. The TradingView data shows REAL computed indicator values across timeframes. Align your signal direction with the TradingView consensus when confidence is high. If TradingView shows Strong Buy/Sell across 3+ timeframes, give HIGH confidence. If TradingView contradicts your analysis, lower confidence and explain the divergence."}
         ]
         import os
-        os.environ['GEMINI_API_KEY'] = EMERGENT_LLM_KEY
-        response = completion(
+        os.environ['GEMINI_API_KEY'] = EMERGENT_LLM_KEY or ""
+        response = await acompletion(
             model="gemini/gemini-2.5-flash",
             messages=messages
         )
@@ -1531,10 +1531,8 @@ async def beast_chat(data: ChatMessage, request: Request, user: dict = Depends(g
             role = "User" if h['role'] == 'user' else "Titan AI"
             history_text += f"{role}: {h['content']}\n"
 
-    chat = LlmChat(
-        api_key=EMERGENT_LLM_KEY,
-        session_id=session_id,
-        system_message=f"""You are TITAN AI (v3.0) — World-Class Professional Trading Intelligence System and Coach with 25+ years experience in Equity, F&O, Forex, Crypto, Commodities, and Index Trading.
+    messages = [
+        {"role": "system", "content": f"""You are TITAN AI (v3.0) — World-Class Professional Trading Intelligence System and Coach with 25+ years experience in Equity, F&O, Forex, Crypto, Commodities, and Index Trading.
 
 === TITAN RESPONSE MODES ===
 MODE 1 (Quick Read): If user asks casual market question → Give regime, bias, key levels, 5-8 lines.

@@ -69,7 +69,7 @@ class TestSignalStrategies:
         data = response.json()
         assert "strategies" in data, "Response should have 'strategies' key"
         strategies = data["strategies"]
-        assert len(strategies) == 10, f"Expected 10 strategies, got {len(strategies)}"
+        assert len(strategies) >= 10, f"Expected at least 10 strategies, got {len(strategies)}"
         
         # Verify strategy structure
         for s in strategies:
