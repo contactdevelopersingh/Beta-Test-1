@@ -9,7 +9,6 @@ import os
 import logging
 import uuid
 import jwt
-import secrets
 import bcrypt
 import httpx
 import time
@@ -3024,7 +3023,7 @@ async def startup_event():
     if not admin2 or 'password' not in admin2 or not admin2.get('password'):
         admin_password = os.environ.get('ADMIN_PASSWORD')
         if not admin_password:
-            admin_password = secrets.token_urlsafe(16)
+            admin_password = uuid.uuid4().hex
             logger.warning(f"No ADMIN_PASSWORD provided in environment. Generated secure password for {admin_email}: {admin_password}")
 
         hashed = bcrypt.hashpw(admin_password.encode(), bcrypt.gensalt()).decode()
