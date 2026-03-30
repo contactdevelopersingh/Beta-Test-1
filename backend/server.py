@@ -10,6 +10,7 @@ import logging
 import uuid
 import jwt
 import bcrypt
+import secrets
 import httpx
 import time
 import json
@@ -36,7 +37,7 @@ client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ['DB_NAME']]
 
 # Config
-JWT_SECRET = os.environ.get('JWT_SECRET', 'titan-trade-jwt-secret-2026')
+JWT_SECRET = os.environ.get('JWT_SECRET', secrets.token_hex(32))
 JWT_ALGORITHM = 'HS256'
 EMERGENT_LLM_KEY = os.environ.get('EMERGENT_LLM_KEY')
 GMAIL_USER = os.environ.get('GMAIL_USER')
