@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useMarketStream } from '../hooks/useMarketStream';
+import { TradingChart } from '../components/TradingChart';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { Input } from '../components/ui/input';
@@ -42,10 +43,17 @@ export default function MarketsPage() {
   const navigate = useNavigate();
   const { crypto, forex, indian, connected, tick, priceChanges, market_status } = useMarketStream(true, 800);
   const [tab, setTab] = useState('crypto');
+  const [selectedAsset, setSelectedAsset] = useState(null);
   const [search, setSearch] = useState('');
   const [sparklines, setSparklines] = useState({});
 
   // Fetch sparklines once from CoinGecko (they don't change every second)
+  useEffect(() => {
+    if (tab === 'crypto' && crypto.length > 0 && !selectedAsset) setSelectedAsset(crypto[0]);
+    else if (tab === 'forex' && forex.length > 0 && !selectedAsset) setSelectedAsset(forex[0]);
+    else if (tab === 'indian' && indian.length > 0 && !selectedAsset) setSelectedAsset(indian[0]);
+  }, [crypto, forex, indian, tab]);
+
   useEffect(() => {
     const fetchSparklines = async () => {
       try {
@@ -71,6 +79,24 @@ export default function MarketsPage() {
 
   return (
     <div className="space-y-6 page-enter" data-testid="markets-page">
+      {selectedAsset && (
+        <Card className="glass-panel border-white/10 overflow-hidden fade-in relative h-[400px]">
+          <div className="absolute top-4 left-4 z-10">
+            <h2 className="text-xl font-bold text-white flex items-center gap-2">
+              {selectedAsset.name} <Badge className="text-[10px] bg-white/5">{selectedAsset.symbol}</Badge>
+            </h2>
+            <div className="flex gap-4 mt-1">
+              <span className={`text-lg font-data font-semibold ${priceChanges[selectedAsset.id] === 'up' ? 'text-[#10B981]' : priceChanges[selectedAsset.id] === 'down' ? 'text-[#EF4444]' : 'text-white'}`}>
+                ${selectedAsset.price?.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 6}) || '0.00'}
+              </span>
+              <span className={`text-sm flex items-center font-data ${selectedAsset.change_24h >= 0 ? 'text-[#10B981]' : 'text-[#EF4444]'}`}>
+                {selectedAsset.change_24h >= 0 ? '+' : ''}{selectedAsset.change_24h}%
+              </span>
+            </div>
+          </div>
+          <TradingChart assetId={selectedAsset.id} assetType={selectedAsset.type || tab} height={400} />
+        </Card>
+      )}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-white" style={{ fontFamily: 'Manrope' }}>Markets</h1>
