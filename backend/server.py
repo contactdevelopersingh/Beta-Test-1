@@ -10,7 +10,6 @@ import logging
 import uuid
 import jwt
 import bcrypt
-import secrets
 import httpx
 import time
 import json
@@ -20,7 +19,7 @@ import re
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
-from pydantic import BaseModel, Field, ConfigDict, validator
+from pydantic import BaseModel
 from typing import List, Optional, Dict
 from emergentintegrations.llm.chat import LlmChat, UserMessage
 import smtplib
@@ -2809,7 +2808,7 @@ async def get_portfolio_heat(user: dict = Depends(get_current_user)):
 
 # ==================== INDIAN MARKET EXTENDED ====================
 
-from services.indian_market import get_all_nifty_stocks, get_market_movers, get_stock_quote, NIFTY500_TOP
+from services.indian_market import get_all_nifty_stocks, get_market_movers, get_stock_quote
 
 # Index → Stocks mapping
 INDEX_STOCKS = {
@@ -2910,7 +2909,7 @@ async def indian_index_stocks(index_name: str):
 
 # ==================== OPTION CHAIN ====================
 
-from services.option_chain import build_option_chain, get_fno_list, FNO_STOCKS, FNO_INDICES
+from services.option_chain import build_option_chain, get_fno_list
 
 @api_router.get("/options/fno-list")
 async def fno_list():
