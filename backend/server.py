@@ -1809,34 +1809,127 @@ async def get_journal(user: dict = Depends(get_current_user)):
 
 @api_router.get("/journal/stats")
 async def get_journal_stats(user: dict = Depends(get_current_user)):
-    trades = await db.trade_journal.find({"user_id": user['user_id']}, {"_id": 0}).to_list(500)
-    total = len(trades)
-    closed = [t for t in trades if t.get('status') == 'closed' and t.get('exit_price')]
-    wins = 0
-    losses = 0
-    total_pnl = 0
-    for t in closed:
-        entry = t.get('entry_price', 0)
-        exit_p = t.get('exit_price', 0)
-        qty = t.get('quantity', 0)
-        if t.get('direction') == 'BUY':
-            pnl = (exit_p - entry) * qty
-        else:
-            pnl = (entry - exit_p) * qty
-        total_pnl += pnl
-        if pnl > 0:
-            wins += 1
-        elif pnl < 0:
-            losses += 1
-    win_rate = (wins / len(closed) * 100) if closed else 0
+    pipeline = [
+        {"$match": {"user_id": user['user_id']}},
+        {"$facet": {
+            "general_stats": [
+                {"$group": {
+                    "_id": None,
+                    "total_trades": {"$sum": 1},
+                    "closed_trades": {
+                        "$sum": {
+                            "$cond": [
+                                {"$and": [
+                                    {"$eq": ["$status", "closed"]},
+                                    {"$ne": ["$exit_price", None]},
+                                    {"$type": "$exit_price"}
+                                ]},
+                                1, 0
+                            ]
+                        }
+                    },
+                    "wins": {
+                        "$sum": {
+                            "$cond": [
+                                {"$and": [
+                                    {"$eq": ["$status", "closed"]},
+                                    {"$ne": ["$exit_price", None]},
+                                    {"$type": "$exit_price"},
+                                    {"$gt": [
+                                        {"$cond": [
+                                            {"$eq": ["$direction", "BUY"]},
+                                            {"$multiply": [{"$subtract": ["$exit_price", {"$ifNull": ["$entry_price", 0]}]}, {"$ifNull": ["$quantity", 0]}]},
+                                            {"$multiply": [{"$subtract": [{"$ifNull": ["$entry_price", 0]}, "$exit_price"]}, {"$ifNull": ["$quantity", 0]}]}
+                                        ]},
+                                        0
+                                    ]}
+                                ]},
+                                1, 0
+                            ]
+                        }
+                    },
+                    "losses": {
+                        "$sum": {
+                            "$cond": [
+                                {"$and": [
+                                    {"$eq": ["$status", "closed"]},
+                                    {"$ne": ["$exit_price", None]},
+                                    {"$type": "$exit_price"},
+                                    {"$lt": [
+                                        {"$cond": [
+                                            {"$eq": ["$direction", "BUY"]},
+                                            {"$multiply": [{"$subtract": ["$exit_price", {"$ifNull": ["$entry_price", 0]}]}, {"$ifNull": ["$quantity", 0]}]},
+                                            {"$multiply": [{"$subtract": [{"$ifNull": ["$entry_price", 0]}, "$exit_price"]}, {"$ifNull": ["$quantity", 0]}]}
+                                        ]},
+                                        0
+                                    ]}
+                                ]},
+                                1, 0
+                            ]
+                        }
+                    },
+                    "total_pnl": {
+                        "$sum": {
+                            "$cond": [
+                                {"$and": [
+                                    {"$eq": ["$status", "closed"]},
+                                    {"$ne": ["$exit_price", None]},
+                                    {"$type": "$exit_price"}
+                                ]},
+                                {"$cond": [
+                                    {"$eq": ["$direction", "BUY"]},
+                                    {"$multiply": [{"$subtract": ["$exit_price", {"$ifNull": ["$entry_price", 0]}]}, {"$ifNull": ["$quantity", 0]}]},
+                                    {"$multiply": [{"$subtract": [{"$ifNull": ["$entry_price", 0]}, "$exit_price"]}, {"$ifNull": ["$quantity", 0]}]}
+                                ]},
+                                0
+                            ]
+                        }
+                    }
+                }}
+            ],
+            "emotion_breakdown": [
+                {"$group": {
+                    "_id": {"$ifNull": ["$emotion_tag", "unknown"]},
+                    "count": {"$sum": 1}
+                }}
+            ]
+        }}
+    ]
+
+    result = await db.trade_journal.aggregate(pipeline).to_list(1)
+
+    if not result or not result[0]['general_stats']:
+        return {
+            "total_trades": 0, "open_trades": 0,
+            "closed_trades": 0, "wins": 0, "losses": 0,
+            "win_rate": 0.0, "total_pnl": 0.0,
+            "emotion_breakdown": {}
+        }
+
+    stats = result[0]['general_stats'][0]
+    emotions = result[0]['emotion_breakdown']
+
+    total = stats.get('total_trades', 0)
+    closed = stats.get('closed_trades', 0)
+    wins = stats.get('wins', 0)
+    losses = stats.get('losses', 0)
+    total_pnl = stats.get('total_pnl', 0)
+
+    win_rate = (wins / closed * 100) if closed > 0 else 0
+
     emotion_counts = {}
-    for t in trades:
-        em = t.get('emotion_tag', 'unknown')
-        emotion_counts[em] = emotion_counts.get(em, 0) + 1
+    for em in emotions:
+        key = em['_id'] if em['_id'] is not None else 'unknown'
+        emotion_counts[key] = em['count']
+
     return {
-        "total_trades": total, "open_trades": total - len(closed),
-        "closed_trades": len(closed), "wins": wins, "losses": losses,
-        "win_rate": round(win_rate, 1), "total_pnl": round(total_pnl, 2),
+        "total_trades": total,
+        "open_trades": total - closed,
+        "closed_trades": closed,
+        "wins": wins,
+        "losses": losses,
+        "win_rate": round(win_rate, 1),
+        "total_pnl": round(total_pnl, 2),
         "emotion_breakdown": emotion_counts
     }
 
