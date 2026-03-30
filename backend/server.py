@@ -2136,10 +2136,17 @@ async def assign_plan(data: PlanAssignment, admin: dict = Depends(get_admin_user
 async def get_all_plans(admin: dict = Depends(get_admin_user)):
     plans = await db.user_plans.find({}, {"_id": 0}).sort("updated_at", -1).to_list(500)
     now = datetime.now(timezone.utc).isoformat()
+    expired_user_ids = []
     for p in plans:
         if p.get('status') == 'active' and p.get('expires_at', '') < now:
             p['status'] = 'expired'
-            await db.user_plans.update_one({"user_id": p['user_id']}, {"$set": {"status": "expired"}})
+            expired_user_ids.append(p['user_id'])
+
+    if expired_user_ids:
+        await db.user_plans.update_many(
+            {"user_id": {"$in": expired_user_ids}},
+            {"$set": {"status": "expired"}}
+        )
     return {"plans": plans}
 
 @api_router.put("/admin/plans/{user_id}")
