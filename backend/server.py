@@ -16,6 +16,7 @@ import json
 import random
 import asyncio
 import re
+import secrets
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
@@ -36,7 +37,12 @@ client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ['DB_NAME']]
 
 # Config
-JWT_SECRET = os.environ['JWT_SECRET']
+JWT_SECRET = os.environ.get('JWT_SECRET')
+if not JWT_SECRET:
+    # Generate a random secure secret if none is provided.
+    # This ensures security without breaking CI, but will invalidate sessions on server restart.
+    JWT_SECRET = secrets.token_hex(32)
+
 JWT_ALGORITHM = 'HS256'
 EMERGENT_LLM_KEY = os.environ.get('EMERGENT_LLM_KEY')
 GMAIL_USER = os.environ.get('GMAIL_USER')
