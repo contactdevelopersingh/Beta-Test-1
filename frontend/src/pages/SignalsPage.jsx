@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 import { useMarketStream } from '../hooks/useMarketStream';
 import { useNavigate } from 'react-router-dom';
@@ -115,6 +116,7 @@ export default function SignalsPage() {
   const [tradingMode, setTradingMode] = useState('swing');
   const [numTpLevels, setNumTpLevels] = useState(3);
   const [deletingSignal, setDeletingSignal] = useState(null);
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
 
   const assets = assetType === 'crypto' ? CRYPTO_ASSETS : assetType === 'forex' ? FOREX_ASSETS : INDIAN_ASSETS;
   const allPrices = [...crypto, ...forex, ...indian];
@@ -295,30 +297,55 @@ export default function SignalsPage() {
               </Select>
             </div>
             <div>
-              <label className="text-xs text-white/40 mb-1.5 block">Asset {assetType === 'indian' ? '(Search)' : ''}</label>
+              <label className="text-xs text-white/40 mb-1.5 block">Asset {assetType === 'indian' ? '(Search any NSE/BSE stock)' : ''}</label>
               {assetType === 'indian' ? (
-                <div className="relative">
+                <div className="relative z-50">
                   <Input
-                    placeholder="e.g. NSE:RELIANCE or search..."
+                    placeholder="Search e.g. RELIANCE, TCS..."
                     value={assetId}
-                    onChange={e => {
-                      const val = e.target.value;
-                      setAssetId(val);
-                    }}
-                    className="w-[200px] bg-black/50 border-white/10 text-white text-sm"
+                    onChange={e => setAssetId(e.target.value.toUpperCase())}
+                    onFocus={() => setIsSearchFocused(true)}
+                    onBlur={() => setTimeout(() => setIsSearchFocused(false), 200)}
+                    className="w-[250px] sm:w-[300px] bg-black/60 border-[#6366F1]/40 focus:border-[#6366F1] text-white text-sm shadow-[0_0_15px_rgba(99,102,241,0.15)] transition-all focus:ring-1 focus:ring-[#6366F1]"
                     data-testid="asset-search-input"
-                    list="indian-assets-list"
                   />
-                  <datalist id="indian-assets-list">
-                    {assets.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
-                  </datalist>
+                  <AnimatePresence>
+                    {isSearchFocused && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        transition={{ duration: 0.2 }}
+                        className="absolute top-full left-0 mt-2 w-full max-h-[250px] overflow-y-auto bg-[#09090B]/95 backdrop-blur-xl border border-white/10 rounded-lg shadow-2xl z-50 custom-scrollbar"
+                      >
+                        {assets.filter(a => a.name.toLowerCase().includes(assetId.toLowerCase()) || a.id.toLowerCase().includes(assetId.toLowerCase())).map(a => (
+                          <div
+                            key={a.id}
+                            className="px-4 py-2.5 text-sm text-white/80 hover:bg-[#6366F1]/20 hover:text-white cursor-pointer transition-colors border-b border-white/5 last:border-0"
+                            onMouseDown={() => setAssetId(a.id)}
+                          >
+                            <span className="font-medium">{a.name}</span>
+                            <span className="text-white/30 text-xs ml-2">({a.id.toUpperCase()})</span>
+                          </div>
+                        ))}
+                        {assetId.length > 0 && !assets.some(a => a.id.toUpperCase() === assetId.toUpperCase()) && (
+                          <div
+                            className="px-4 py-3 text-sm text-[#10B981] bg-[#10B981]/5 hover:bg-[#10B981]/20 cursor-pointer border-t border-white/10 font-medium transition-colors"
+                            onMouseDown={() => setAssetId(assetId)}
+                          >
+                            + Use Custom Symbol: <span className="font-bold ml-1">{assetId.startsWith('NSE:') || assetId.startsWith('BSE:') ? assetId : `NSE:${assetId}`}</span>
+                          </div>
+                        )}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
               ) : (
                 <Select value={assetId} onValueChange={setAssetId}>
-                  <SelectTrigger className="w-[200px] bg-black/50 border-white/10 text-white text-sm" data-testid="asset-select">
+                  <SelectTrigger className="w-[200px] bg-black/50 border-white/10 text-white text-sm transition-colors hover:border-white/20" data-testid="asset-select">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent className="bg-[#09090B] border-white/10 max-h-[300px]">
+                  <SelectContent className="bg-[#09090B]/95 backdrop-blur-xl border-white/10 max-h-[300px]">
                     {assets.map(a => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
@@ -518,15 +545,21 @@ export default function SignalsPage() {
       {loading ? (
         <div className="space-y-4">{[1,2,3].map(i => <div key={i} className="h-48 rounded-xl skeleton-shimmer" />)}</div>
       ) : signals.length === 0 ? (
-        <Card className="glass-panel border-white/10">
-          <CardContent className="py-16 text-center">
-            <Zap className="w-12 h-12 text-white/10 mx-auto mb-3" />
-            <h3 className="text-white/60 text-sm font-medium mb-1">No Signals Yet</h3>
-            <p className="text-white/30 text-xs">Generate your first AI trading signal above</p>
-          </CardContent>
-        </Card>
+        <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}>
+          <Card className="glass-panel border-white/10 relative overflow-hidden group">
+            <div className="absolute inset-0 bg-gradient-to-br from-[#6366F1]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+            <CardContent className="py-20 text-center relative z-10">
+              <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mx-auto mb-4 border border-white/10 shadow-[0_0_30px_rgba(255,255,255,0.05)]">
+                <Zap className="w-8 h-8 text-white/20 group-hover:text-[#6366F1] transition-colors duration-500" />
+              </div>
+              <h3 className="text-white/80 text-lg font-semibold mb-2 tracking-wide">No Signals Yet</h3>
+              <p className="text-white/40 text-sm max-w-sm mx-auto">Select your market, asset, and strategy above to generate your first AI trading signal.</p>
+            </CardContent>
+          </Card>
+        </motion.div>
       ) : (
-        <div className="space-y-4">
+        <motion.div layout className="space-y-4">
+          <AnimatePresence mode="popLayout">
           {signals.filter(sig => filter === 'all' || sig.direction === filter).map((sig, i) => {
             const liveItem = allPrices.find(p => p.id === sig.asset_id);
             const currentPrice = liveItem?.price;
@@ -545,11 +578,19 @@ export default function SignalsPage() {
                 : ((entryPrice - currentPrice) / entryPrice) * 100;
             }
             return (
-              <Card key={sig.signal_id || i}
-                className={`glass-panel border-white/10 card-hover overflow-hidden slide-up-fade stagger-${(i % 4) + 1} ${sig.direction === 'BUY' ? 'signal-card-buy' : 'signal-card-sell'}`}
-                data-testid={`signal-card-${sig.signal_id}`}
+              <motion.div
+                key={sig.signal_id}
+                layout
+                initial={{ opacity: 0, y: 30, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95, filter: "blur(4px)" }}
+                transition={{ duration: 0.4, type: "spring", bounce: 0.3 }}
               >
-                <CardContent className="p-5">
+                <Card
+                  className={`glass-panel border-white/10 card-hover overflow-hidden transition-all duration-300 ${sig.direction === 'BUY' ? 'hover:border-emerald-500/30 hover:shadow-[0_0_30px_rgba(16,185,129,0.1)]' : 'hover:border-red-500/30 hover:shadow-[0_0_30px_rgba(239,68,68,0.1)]'}`}
+                  data-testid={`signal-card-${sig.signal_id}`}
+                >
+                  <CardContent className="p-5">
                   <div className="flex flex-col md:flex-row md:items-start gap-5">
                     <ConfidenceRing value={sig.confidence || 0} />
                     <div className="flex-1 space-y-3 min-w-0">
@@ -856,11 +897,13 @@ export default function SignalsPage() {
                       )}
                     </div>
                   </div>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+              </motion.div>
             );
           })}
-        </div>
+          </AnimatePresence>
+        </motion.div>
       )}
     </div>
   );
