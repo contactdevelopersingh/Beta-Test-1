@@ -1822,7 +1822,7 @@ async def get_journal_stats(user: dict = Depends(get_current_user)):
                                 {"$and": [
                                     {"$eq": ["$status", "closed"]},
                                     {"$ne": ["$exit_price", None]},
-                                    {"$type": "$exit_price"}
+                                    {"$ne": ["$exit_price", ""]}
                                 ]},
                                 1, 0
                             ]
@@ -1834,15 +1834,8 @@ async def get_journal_stats(user: dict = Depends(get_current_user)):
                                 {"$and": [
                                     {"$eq": ["$status", "closed"]},
                                     {"$ne": ["$exit_price", None]},
-                                    {"$type": "$exit_price"},
-                                    {"$gt": [
-                                        {"$cond": [
-                                            {"$eq": ["$direction", "BUY"]},
-                                            {"$multiply": [{"$subtract": ["$exit_price", {"$ifNull": ["$entry_price", 0]}]}, {"$ifNull": ["$quantity", 0]}]},
-                                            {"$multiply": [{"$subtract": [{"$ifNull": ["$entry_price", 0]}, "$exit_price"]}, {"$ifNull": ["$quantity", 0]}]}
-                                        ]},
-                                        0
-                                    ]}
+                                    {"$ne": ["$exit_price", ""]},
+                                    {"$gt": ["$pnl", 0]}
                                 ]},
                                 1, 0
                             ]
@@ -1854,15 +1847,8 @@ async def get_journal_stats(user: dict = Depends(get_current_user)):
                                 {"$and": [
                                     {"$eq": ["$status", "closed"]},
                                     {"$ne": ["$exit_price", None]},
-                                    {"$type": "$exit_price"},
-                                    {"$lt": [
-                                        {"$cond": [
-                                            {"$eq": ["$direction", "BUY"]},
-                                            {"$multiply": [{"$subtract": ["$exit_price", {"$ifNull": ["$entry_price", 0]}]}, {"$ifNull": ["$quantity", 0]}]},
-                                            {"$multiply": [{"$subtract": [{"$ifNull": ["$entry_price", 0]}, "$exit_price"]}, {"$ifNull": ["$quantity", 0]}]}
-                                        ]},
-                                        0
-                                    ]}
+                                    {"$ne": ["$exit_price", ""]},
+                                    {"$lt": ["$pnl", 0]}
                                 ]},
                                 1, 0
                             ]
@@ -1874,13 +1860,9 @@ async def get_journal_stats(user: dict = Depends(get_current_user)):
                                 {"$and": [
                                     {"$eq": ["$status", "closed"]},
                                     {"$ne": ["$exit_price", None]},
-                                    {"$type": "$exit_price"}
+                                    {"$ne": ["$exit_price", ""]}
                                 ]},
-                                {"$cond": [
-                                    {"$eq": ["$direction", "BUY"]},
-                                    {"$multiply": [{"$subtract": ["$exit_price", {"$ifNull": ["$entry_price", 0]}]}, {"$ifNull": ["$quantity", 0]}]},
-                                    {"$multiply": [{"$subtract": [{"$ifNull": ["$entry_price", 0]}, "$exit_price"]}, {"$ifNull": ["$quantity", 0]}]}
-                                ]},
+                                {"$ifNull": ["$pnl", 0]},
                                 0
                             ]
                         }
