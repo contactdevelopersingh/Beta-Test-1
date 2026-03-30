@@ -37,7 +37,7 @@ client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ['DB_NAME']]
 
 # Config
-JWT_SECRET = os.environ.get('JWT_SECRET', secrets.token_hex(32))
+JWT_SECRET = os.environ.get('JWT_SECRET', uuid.uuid4().hex)
 JWT_ALGORITHM = 'HS256'
 EMERGENT_LLM_KEY = os.environ.get('EMERGENT_LLM_KEY')
 GMAIL_USER = os.environ.get('GMAIL_USER')
